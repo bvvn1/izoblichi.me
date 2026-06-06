@@ -1,0 +1,16 @@
+[Unit]
+Description=Izoblichi.me API Backend
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/izoblichi/backend
+Environment=PORT=8080
+Environment=GIN_MODE=release
+Environment=DB_PATH=/opt/izoblichi/data/procurement.duckdb?access_mode=read_only
+ExecStart=/opt/izoblichi/backend/backend-linux
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

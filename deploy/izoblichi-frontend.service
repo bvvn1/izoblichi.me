@@ -1,0 +1,15 @@
+[Unit]
+Description=Izoblichi.me Frontend
+After=network.target izoblichi-backend.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/izoblichi/frontend/build
+Environment=PORT=3001
+Environment=HOST=127.0.0.1
+ExecStart=/root/.bun/bin/bun run index.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
