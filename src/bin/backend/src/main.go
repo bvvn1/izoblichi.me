@@ -18,7 +18,7 @@ type App struct {
 func main() {
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
-		dbPath = "../../data/procurement.duckdb?access_mode=read_only"
+		dbPath = "../../../../data/procurement.duckdb?access_mode=read_only"
 	}
 
 	db, err := sql.Open("duckdb", dbPath)
