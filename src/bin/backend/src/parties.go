@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/gin-gonic/gin"
 )
 
@@ -40,31 +41,28 @@ func (a *App) listParties(c *gin.Context) {
 	page, perPage := paginate(c)
 	offset := (page - 1) * perPage
 
-	var query string
-	var args []any
+	qb := sb.Select(
+		"eik", "legal_name", "display_name", "address_locality", "address_region",
+		"country", "first_seen_date", "last_seen_date",
+		"COUNT(*) OVER () AS total",
+	).From("parties")
 
 	if q != "" {
 		pct := "%" + q + "%"
-		query = `
-			SELECT eik, legal_name, display_name, address_locality, address_region,
-			       country, first_seen_date, last_seen_date,
-			       COUNT(*) OVER () AS total
-			FROM parties
-			WHERE legal_name ILIKE ? OR display_name ILIKE ? OR eik LIKE ?
-			ORDER BY display_name NULLS LAST, legal_name NULLS LAST
-			LIMIT ? OFFSET ?`
-		args = []any{pct, pct, "%" + q + "%", perPage, offset}
-	} else {
-		query = `
-			SELECT eik, legal_name, display_name, address_locality, address_region,
-			       country, first_seen_date, last_seen_date,
-			       COUNT(*) OVER () AS total
-			FROM parties
-			ORDER BY display_name NULLS LAST, legal_name NULLS LAST
-			LIMIT ? OFFSET ?`
-		args = []any{perPage, offset}
+		qb = qb.Where(sq.Or{
+			sq.Expr("legal_name ILIKE ?", pct),
+			sq.Expr("display_name ILIKE ?", pct),
+			sq.Expr("eik LIKE ?", pct),
+		})
 	}
+	qb = qb.OrderBy("display_name NULLS LAST", "legal_name NULLS LAST").
+		Limit(uint64(perPage)).Offset(uint64(offset))
 
+	query, args, err := qb.ToSql()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	rows, err := a.db.Query(query, args...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

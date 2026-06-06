@@ -9,12 +9,17 @@ import (
 	"strings"
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	_ "github.com/duckdb/duckdb-go/v2"
 	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
 )
 
+// sb is the package-level squirrel builder using DuckDB's '?' placeholder format.
+var sb = sq.StatementBuilder.PlaceholderFormat(sq.Question)
+
 type App struct {
-	db     *sql.DB
+	db     *sqlx.DB
 	dbPath string // cleaned path without query params, for os.Stat
 }
 
@@ -24,7 +29,7 @@ func main() {
 		dbPath = "../../../../data/procurement.duckdb?access_mode=read_only"
 	}
 
-	db, err := sql.Open("duckdb", dbPath)
+	db, err := sqlx.Open("duckdb", dbPath)
 	if err != nil {
 		log.Fatalf("open db: %v", err)
 	}
@@ -301,4 +306,32 @@ func nullDate(nt sql.NullTime) *string {
 	}
 	s := nt.Time.Format("2006-01-02")
 	return &s
+}
+
+// buildFilters returns squirrel conditions for the standard buyer/supplier/year filters.
+func buildFilters(buyerEIK, supplierEIK, yearFrom, yearTo string) sq.And {
+	var conds sq.And
+	if buyerEIK != "" {
+		conds = append(conds, sq.Eq{"buyer_eik": buyerEIK})
+	}
+	if supplierEIK != "" {
+		conds = append(conds, sq.Eq{"supplier_eik": supplierEIK})
+	}
+	if yearFrom != "" {
+		conds = append(conds, sq.GtOrEq{"year": yearFrom})
+	}
+	if yearTo != "" {
+		conds = append(conds, sq.LtOrEq{"year": yearTo})
+	}
+	return conds
+}
+
+// whereClause converts an sq.And into a "WHERE ..." string + args for template injection.
+// Returns ("", nil) when there are no conditions.
+func whereClause(conds sq.And) (string, []any) {
+	if len(conds) == 0 {
+		return "", nil
+	}
+	wSQL, wArgs, _ := conds.ToSql()
+	return "WHERE " + wSQL, wArgs
 }

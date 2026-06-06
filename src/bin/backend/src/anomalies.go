@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
-	"strings"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/gin-gonic/gin"
 )
 
@@ -105,29 +105,6 @@ func (a *App) getAnomalies(c *gin.Context) {
 	page, perPage := paginate(c)
 	offset := (page - 1) * perPage
 
-	baseConds := []string{}
-	baseArgs := []any{}
-	if buyerEIK != "" {
-		baseConds = append(baseConds, "buyer_eik = ?")
-		baseArgs = append(baseArgs, buyerEIK)
-	}
-	if supplierEIK != "" {
-		baseConds = append(baseConds, "supplier_eik = ?")
-		baseArgs = append(baseArgs, supplierEIK)
-	}
-	if yearFrom != "" {
-		baseConds = append(baseConds, "year >= ?")
-		baseArgs = append(baseArgs, yearFrom)
-	}
-	if yearTo != "" {
-		baseConds = append(baseConds, "year <= ?")
-		baseArgs = append(baseArgs, yearTo)
-	}
-	baseAnd := ""
-	if len(baseConds) > 0 {
-		baseAnd = "AND " + strings.Join(baseConds, " AND ")
-	}
-
 	resp := AnomaliesResponse{
 		NearThreshold: AnomalySection[NearThresholdAnomaly]{Items: []NearThresholdAnomaly{}, Page: page, PerPage: perPage},
 		NoBid:         AnomalySection[NoBidAnomaly]{Items: []NoBidAnomaly{}, Page: page, PerPage: perPage},
@@ -136,31 +113,42 @@ func (a *App) getAnomalies(c *gin.Context) {
 	}
 
 	if typeSet["near_threshold"] {
-		// Check against goods/services threshold (70k) and works threshold (264k).
-		// A contract just below a threshold that would trigger a more competitive
-		// procedure is suspicious regardless of category.
-		q := `
-			SELECT contract_value, buyer_eik, buyer_name, supplier_eik, supplier_name,
-			       contract_date, title, procurement_category,
-			       COUNT(*) OVER () AS total
-			FROM contracts_unified
-			WHERE currency = 'BGN'
-			  AND (
-			    (procurement_category NOT IN ('Строителство', 'works')
-			     AND contract_value BETWEEN ? AND ?)
-			    OR
-			    (procurement_category IN ('Строителство', 'works')
-			     AND contract_value BETWEEN ? AND ?)
-			  ) ` + baseAnd + `
-			ORDER BY contract_value DESC
-			LIMIT ? OFFSET ?`
-		args := append([]any{
-			ThresholdGoods * (1 - NearThresholdMargin), ThresholdGoods,
-			ThresholdWorks * (1 - NearThresholdMargin), ThresholdWorks,
-		}, baseArgs...)
-		args = append(args, perPage, offset)
+		qb := sb.Select(
+			"contract_value", "buyer_eik", "buyer_name", "supplier_eik", "supplier_name",
+			"contract_date", "title", "procurement_category",
+			"COUNT(*) OVER () AS total",
+		).From("contracts_unified").
+			Where("currency = 'BGN'").
+			Where(sq.Or{
+				sq.And{
+					sq.Expr("procurement_category NOT IN ('Строителство', 'works')"),
+					sq.Expr("contract_value BETWEEN ? AND ?", ThresholdGoods*(1-NearThresholdMargin), ThresholdGoods),
+				},
+				sq.And{
+					sq.Expr("procurement_category IN ('Строителство', 'works')"),
+					sq.Expr("contract_value BETWEEN ? AND ?", ThresholdWorks*(1-NearThresholdMargin), ThresholdWorks),
+				},
+			})
+		if buyerEIK != "" {
+			qb = qb.Where(sq.Eq{"buyer_eik": buyerEIK})
+		}
+		if supplierEIK != "" {
+			qb = qb.Where(sq.Eq{"supplier_eik": supplierEIK})
+		}
+		if yearFrom != "" {
+			qb = qb.Where(sq.GtOrEq{"year": yearFrom})
+		}
+		if yearTo != "" {
+			qb = qb.Where(sq.LtOrEq{"year": yearTo})
+		}
+		qb = qb.OrderBy("contract_value DESC").Limit(uint64(perPage)).Offset(uint64(offset))
 
-		rows, err := a.db.Query(q, args...)
+		ntSQL, ntArgs, err := qb.ToSql()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		rows, err := a.db.Query(ntSQL, ntArgs...)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -206,17 +194,32 @@ func (a *App) getAnomalies(c *gin.Context) {
 	}
 
 	if typeSet["no_bid"] {
-		q := `
-			SELECT bid_count, contract_value, currency,
-			       buyer_eik, buyer_name, supplier_eik, supplier_name,
-			       contract_date, title,
-			       COUNT(*) OVER () AS total
-			FROM contracts_unified
-			WHERE bid_count <= 1 ` + baseAnd + `
-			ORDER BY contract_value DESC NULLS LAST
-			LIMIT ? OFFSET ?`
-		args := append(baseArgs, perPage, offset)
-		rows, err := a.db.Query(q, args...)
+		qb := sb.Select(
+			"bid_count", "contract_value", "currency",
+			"buyer_eik", "buyer_name", "supplier_eik", "supplier_name",
+			"contract_date", "title",
+			"COUNT(*) OVER () AS total",
+		).From("contracts_unified").Where("bid_count <= 1")
+		if buyerEIK != "" {
+			qb = qb.Where(sq.Eq{"buyer_eik": buyerEIK})
+		}
+		if supplierEIK != "" {
+			qb = qb.Where(sq.Eq{"supplier_eik": supplierEIK})
+		}
+		if yearFrom != "" {
+			qb = qb.Where(sq.GtOrEq{"year": yearFrom})
+		}
+		if yearTo != "" {
+			qb = qb.Where(sq.LtOrEq{"year": yearTo})
+		}
+		qb = qb.OrderBy("contract_value DESC NULLS LAST").Limit(uint64(perPage)).Offset(uint64(offset))
+
+		nbSQL, nbArgs, err := qb.ToSql()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		rows, err := a.db.Query(nbSQL, nbArgs...)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -252,29 +255,7 @@ func (a *App) getAnomalies(c *gin.Context) {
 	}
 
 	if typeSet["dominance"] {
-		domConds := []string{}
-		domArgs := []any{}
-		if buyerEIK != "" {
-			domConds = append(domConds, "buyer_eik = ?")
-			domArgs = append(domArgs, buyerEIK)
-		}
-		if supplierEIK != "" {
-			domConds = append(domConds, "supplier_eik = ?")
-			domArgs = append(domArgs, supplierEIK)
-		}
-		if yearFrom != "" {
-			domConds = append(domConds, "year >= ?")
-			domArgs = append(domArgs, yearFrom)
-		}
-		if yearTo != "" {
-			domConds = append(domConds, "year <= ?")
-			domArgs = append(domArgs, yearTo)
-		}
-		domWhere := ""
-		if len(domConds) > 0 {
-			domWhere = "WHERE " + strings.Join(domConds, " AND ")
-		}
-
+		domWhere, domArgs := whereClause(buildFilters(buyerEIK, supplierEIK, yearFrom, yearTo))
 		q := `
 			WITH agg AS (
 				SELECT
@@ -298,8 +279,8 @@ func (a *App) getAnomalies(c *gin.Context) {
 			FROM filtered
 			ORDER BY pct DESC
 			LIMIT ? OFFSET ?`
-		domArgs = append(domArgs, DominanceThreshold*100, perPage, offset)
-		rows, err := a.db.Query(q, domArgs...)
+		args := append(domArgs, DominanceThreshold*100, perPage, offset)
+		rows, err := a.db.Query(q, args...)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -332,29 +313,7 @@ func (a *App) getAnomalies(c *gin.Context) {
 	}
 
 	if typeSet["repeated_award"] {
-		raConds := []string{}
-		raArgs := []any{}
-		if buyerEIK != "" {
-			raConds = append(raConds, "buyer_eik = ?")
-			raArgs = append(raArgs, buyerEIK)
-		}
-		if supplierEIK != "" {
-			raConds = append(raConds, "supplier_eik = ?")
-			raArgs = append(raArgs, supplierEIK)
-		}
-		if yearFrom != "" {
-			raConds = append(raConds, "year >= ?")
-			raArgs = append(raArgs, yearFrom)
-		}
-		if yearTo != "" {
-			raConds = append(raConds, "year <= ?")
-			raArgs = append(raArgs, yearTo)
-		}
-		raWhere := ""
-		if len(raConds) > 0 {
-			raWhere = "WHERE " + strings.Join(raConds, " AND ")
-		}
-
+		raWhere, raArgs := whereClause(buildFilters(buyerEIK, supplierEIK, yearFrom, yearTo))
 		// Pairs that won contracts in at least N distinct years with a combined
 		// single-bid rate ≥ 50%, indicating a recurring no-competition pattern.
 		q := `
@@ -395,8 +354,8 @@ func (a *App) getAnomalies(c *gin.Context) {
 			FROM filtered
 			ORDER BY years_active DESC, total_wins DESC
 			LIMIT ? OFFSET ?`
-		raArgs = append(raArgs, RepeatedAwardMinYears, RepeatedAwardMinWins, perPage, offset)
-		rows, err := a.db.Query(q, raArgs...)
+		args := append(raArgs, RepeatedAwardMinYears, RepeatedAwardMinWins, perPage, offset)
+		rows, err := a.db.Query(q, args...)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

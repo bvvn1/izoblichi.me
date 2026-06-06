@@ -3,8 +3,8 @@ package main
 import (
 	"database/sql"
 	"net/http"
-	"strings"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/gin-gonic/gin"
 )
 
@@ -51,56 +51,48 @@ func (a *App) listAnnexes(c *gin.Context) {
 	page, perPage := paginate(c)
 	offset := (page - 1) * perPage
 
-	conds := []string{}
-	args := []any{}
+	qb := sb.Select(
+		"rowid", "source_year", "doc_number", "contract_number",
+		"contract_date", "published_date", "procurement_number",
+		"buyer_eik", "buyer_name", "procurement_subject", "procurement_category",
+		"eu_funded", "contract_subject",
+		"supplier_eik", "supplier_name",
+		"value_before", "value_after", "value_change", "currency",
+		"amendment_description", "amendment_reason", "circumstances",
+		"COUNT(*) OVER () AS total",
+	).From("legacy_annexes")
 
 	if q != "" {
 		pct := "%" + q + "%"
-		conds = append(conds, "(procurement_subject ILIKE ? OR contract_subject ILIKE ? OR buyer_name ILIKE ? OR supplier_name ILIKE ?)")
-		args = append(args, pct, pct, pct, pct)
+		qb = qb.Where(sq.Or{
+			sq.Expr("procurement_subject ILIKE ?", pct),
+			sq.Expr("contract_subject ILIKE ?", pct),
+			sq.Expr("buyer_name ILIKE ?", pct),
+			sq.Expr("supplier_name ILIKE ?", pct),
+		})
 	}
 	if buyerEIK != "" {
-		conds = append(conds, "buyer_eik = ?")
-		args = append(args, buyerEIK)
+		qb = qb.Where(sq.Eq{"buyer_eik": buyerEIK})
 	}
 	if supplierEIK != "" {
-		conds = append(conds, "supplier_eik = ?")
-		args = append(args, supplierEIK)
+		qb = qb.Where(sq.Eq{"supplier_eik": supplierEIK})
 	}
 	if yearFrom != "" {
-		conds = append(conds, "source_year >= ?")
-		args = append(args, yearFrom)
+		qb = qb.Where(sq.GtOrEq{"source_year": yearFrom})
 	}
 	if yearTo != "" {
-		conds = append(conds, "source_year <= ?")
-		args = append(args, yearTo)
+		qb = qb.Where(sq.LtOrEq{"source_year": yearTo})
 	}
 	if procNum != "" {
-		conds = append(conds, "procurement_number = ?")
-		args = append(args, procNum)
+		qb = qb.Where(sq.Eq{"procurement_number": procNum})
 	}
+	qb = qb.OrderBy("contract_date DESC NULLS LAST").Limit(uint64(perPage)).Offset(uint64(offset))
 
-	where := ""
-	if len(conds) > 0 {
-		where = "WHERE " + strings.Join(conds, " AND ")
+	query, queryArgs, err := qb.ToSql()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
-
-	query := `
-		SELECT
-			rowid, source_year, doc_number, contract_number,
-			contract_date, published_date, procurement_number,
-			buyer_eik, buyer_name, procurement_subject, procurement_category,
-			eu_funded, contract_subject,
-			supplier_eik, supplier_name,
-			value_before, value_after, value_change, currency,
-			amendment_description, amendment_reason, circumstances,
-			COUNT(*) OVER () AS total
-		FROM legacy_annexes
-		` + where + `
-		ORDER BY contract_date DESC NULLS LAST
-		LIMIT ? OFFSET ?`
-
-	queryArgs := append(args, perPage, offset)
 	rows, err := a.db.Query(query, queryArgs...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

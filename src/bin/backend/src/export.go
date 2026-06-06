@@ -5,8 +5,8 @@ import (
 	"encoding/csv"
 	"fmt"
 	"net/http"
-	"strings"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/gin-gonic/gin"
 )
 
@@ -52,62 +52,52 @@ func (a *App) exportContracts(c *gin.Context) {
 	category := c.Query("category")
 	source := c.Query("source")
 
-	conds := []string{}
-	args := []any{}
+	qb := sb.Select(
+		"data_source", "row_key", "year", "contract_date",
+		"buyer_eik", "buyer_name", "supplier_eik", "supplier_name",
+		"contract_value", "currency", "procurement_number", "title",
+		"procurement_category", "bid_count", "procurement_method", "eu_funded",
+	).From("contracts_unified")
 
 	if q != "" {
-		conds = append(conds, "(title ILIKE ? OR buyer_name ILIKE ? OR supplier_name ILIKE ?)")
 		pct := "%" + q + "%"
-		args = append(args, pct, pct, pct)
+		qb = qb.Where(sq.Or{
+			sq.Expr("title ILIKE ?", pct),
+			sq.Expr("buyer_name ILIKE ?", pct),
+			sq.Expr("supplier_name ILIKE ?", pct),
+		})
 	}
 	if buyerEIK != "" {
-		conds = append(conds, "buyer_eik = ?")
-		args = append(args, buyerEIK)
+		qb = qb.Where(sq.Eq{"buyer_eik": buyerEIK})
 	}
 	if supplierEIK != "" {
-		conds = append(conds, "supplier_eik = ?")
-		args = append(args, supplierEIK)
+		qb = qb.Where(sq.Eq{"supplier_eik": supplierEIK})
 	}
 	if yearFrom != "" {
-		conds = append(conds, "year >= ?")
-		args = append(args, yearFrom)
+		qb = qb.Where(sq.GtOrEq{"year": yearFrom})
 	}
 	if yearTo != "" {
-		conds = append(conds, "year <= ?")
-		args = append(args, yearTo)
+		qb = qb.Where(sq.LtOrEq{"year": yearTo})
 	}
 	if minValue != "" {
-		conds = append(conds, "contract_value >= ?")
-		args = append(args, minValue)
+		qb = qb.Where(sq.GtOrEq{"contract_value": minValue})
 	}
 	if maxValue != "" {
-		conds = append(conds, "contract_value <= ?")
-		args = append(args, maxValue)
+		qb = qb.Where(sq.LtOrEq{"contract_value": maxValue})
 	}
 	if category != "" {
-		conds = append(conds, "procurement_category = ?")
-		args = append(args, category)
+		qb = qb.Where(sq.Eq{"procurement_category": category})
 	}
 	if source != "" {
-		conds = append(conds, "data_source = ?")
-		args = append(args, source)
+		qb = qb.Where(sq.Eq{"data_source": source})
 	}
+	qb = qb.OrderBy("contract_date DESC NULLS LAST").Limit(10000)
 
-	where := ""
-	if len(conds) > 0 {
-		where = "WHERE " + strings.Join(conds, " AND ")
+	query, args, err := qb.ToSql()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
-
-	query := `
-		SELECT data_source, row_key, year, contract_date,
-		       buyer_eik, buyer_name, supplier_eik, supplier_name,
-		       contract_value, currency, procurement_number, title,
-		       procurement_category, bid_count, procurement_method, eu_funded
-		FROM contracts_unified
-		` + where + `
-		ORDER BY contract_date DESC NULLS LAST
-		LIMIT 10000`
-
 	rows, err := a.db.Query(query, args...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -194,29 +184,6 @@ func (a *App) exportAnomalies(c *gin.Context) {
 	yearFrom := c.Query("year_from")
 	yearTo := c.Query("year_to")
 
-	baseConds := []string{}
-	baseArgs := []any{}
-	if buyerEIK != "" {
-		baseConds = append(baseConds, "buyer_eik = ?")
-		baseArgs = append(baseArgs, buyerEIK)
-	}
-	if supplierEIK != "" {
-		baseConds = append(baseConds, "supplier_eik = ?")
-		baseArgs = append(baseArgs, supplierEIK)
-	}
-	if yearFrom != "" {
-		baseConds = append(baseConds, "year >= ?")
-		baseArgs = append(baseArgs, yearFrom)
-	}
-	if yearTo != "" {
-		baseConds = append(baseConds, "year <= ?")
-		baseArgs = append(baseArgs, yearTo)
-	}
-	baseAnd := ""
-	if len(baseConds) > 0 {
-		baseAnd = "AND " + strings.Join(baseConds, " AND ")
-	}
-
 	c.Header("Content-Type", "text/csv; charset=utf-8")
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="anomalies_%s.csv"`, anomalyType))
 	c.Header("X-Content-Type-Options", "nosniff")
@@ -229,25 +196,36 @@ func (a *App) exportAnomalies(c *gin.Context) {
 			"contract_date", "title", "procurement_category",
 			"contract_value", "threshold", "gap", "gap_pct",
 		})
-		q := `
-			SELECT contract_value, buyer_eik, buyer_name, supplier_eik, supplier_name,
-			       contract_date, title, procurement_category
-			FROM contracts_unified
-			WHERE currency = 'BGN'
-			  AND (
-			    (procurement_category NOT IN ('Строителство', 'works')
-			     AND contract_value BETWEEN ? AND ?)
-			    OR
-			    (procurement_category IN ('Строителство', 'works')
-			     AND contract_value BETWEEN ? AND ?)
-			  ) ` + baseAnd + `
-			ORDER BY contract_value DESC
-			LIMIT 10000`
-		args := append([]any{
-			ThresholdGoods * (1 - NearThresholdMargin), ThresholdGoods,
-			ThresholdWorks * (1 - NearThresholdMargin), ThresholdWorks,
-		}, baseArgs...)
-		rows, err := a.db.Query(q, args...)
+		qb := sb.Select(
+			"contract_value", "buyer_eik", "buyer_name", "supplier_eik", "supplier_name",
+			"contract_date", "title", "procurement_category",
+		).From("contracts_unified").
+			Where("currency = 'BGN'").
+			Where(sq.Or{
+				sq.And{
+					sq.Expr("procurement_category NOT IN ('Строителство', 'works')"),
+					sq.Expr("contract_value BETWEEN ? AND ?", ThresholdGoods*(1-NearThresholdMargin), ThresholdGoods),
+				},
+				sq.And{
+					sq.Expr("procurement_category IN ('Строителство', 'works')"),
+					sq.Expr("contract_value BETWEEN ? AND ?", ThresholdWorks*(1-NearThresholdMargin), ThresholdWorks),
+				},
+			})
+		if buyerEIK != "" {
+			qb = qb.Where(sq.Eq{"buyer_eik": buyerEIK})
+		}
+		if supplierEIK != "" {
+			qb = qb.Where(sq.Eq{"supplier_eik": supplierEIK})
+		}
+		if yearFrom != "" {
+			qb = qb.Where(sq.GtOrEq{"year": yearFrom})
+		}
+		if yearTo != "" {
+			qb = qb.Where(sq.LtOrEq{"year": yearTo})
+		}
+		qb = qb.OrderBy("contract_value DESC").Limit(10000)
+		ntSQL, ntArgs, _ := qb.ToSql()
+		rows, err := a.db.Query(ntSQL, ntArgs...)
 		if err != nil {
 			return
 		}
@@ -286,15 +264,26 @@ func (a *App) exportAnomalies(c *gin.Context) {
 			"buyer_eik", "buyer_name", "supplier_eik", "supplier_name",
 			"contract_date", "title", "bid_count", "contract_value", "currency",
 		})
-		q := `
-			SELECT bid_count, contract_value, currency,
-			       buyer_eik, buyer_name, supplier_eik, supplier_name,
-			       contract_date, title
-			FROM contracts_unified
-			WHERE bid_count <= 1 ` + baseAnd + `
-			ORDER BY contract_value DESC NULLS LAST
-			LIMIT 10000`
-		rows, err := a.db.Query(q, baseArgs...)
+		qb := sb.Select(
+			"bid_count", "contract_value", "currency",
+			"buyer_eik", "buyer_name", "supplier_eik", "supplier_name",
+			"contract_date", "title",
+		).From("contracts_unified").Where("bid_count <= 1")
+		if buyerEIK != "" {
+			qb = qb.Where(sq.Eq{"buyer_eik": buyerEIK})
+		}
+		if supplierEIK != "" {
+			qb = qb.Where(sq.Eq{"supplier_eik": supplierEIK})
+		}
+		if yearFrom != "" {
+			qb = qb.Where(sq.GtOrEq{"year": yearFrom})
+		}
+		if yearTo != "" {
+			qb = qb.Where(sq.LtOrEq{"year": yearTo})
+		}
+		qb = qb.OrderBy("contract_value DESC NULLS LAST").Limit(10000)
+		nbSQL, nbArgs, _ := qb.ToSql()
+		rows, err := a.db.Query(nbSQL, nbArgs...)
 		if err != nil {
 			return
 		}
@@ -329,28 +318,7 @@ func (a *App) exportAnomalies(c *gin.Context) {
 			"buyer_eik", "buyer_name", "supplier_eik", "supplier_name",
 			"wins", "total_value", "pct_by_count", "total_buyer_contracts",
 		})
-		domConds := []string{}
-		domArgs := []any{}
-		if buyerEIK != "" {
-			domConds = append(domConds, "buyer_eik = ?")
-			domArgs = append(domArgs, buyerEIK)
-		}
-		if supplierEIK != "" {
-			domConds = append(domConds, "supplier_eik = ?")
-			domArgs = append(domArgs, supplierEIK)
-		}
-		if yearFrom != "" {
-			domConds = append(domConds, "year >= ?")
-			domArgs = append(domArgs, yearFrom)
-		}
-		if yearTo != "" {
-			domConds = append(domConds, "year <= ?")
-			domArgs = append(domArgs, yearTo)
-		}
-		domWhere := ""
-		if len(domConds) > 0 {
-			domWhere = "WHERE " + strings.Join(domConds, " AND ")
-		}
+		domWhere, domArgs := whereClause(buildFilters(buyerEIK, supplierEIK, yearFrom, yearTo))
 		q := `
 			WITH agg AS (
 				SELECT buyer_eik, buyer_name, supplier_eik, supplier_name,
@@ -371,8 +339,8 @@ func (a *App) exportAnomalies(c *gin.Context) {
 			FROM filtered
 			ORDER BY pct DESC
 			LIMIT 10000`
-		domArgs = append(domArgs, DominanceThreshold*100)
-		rows, err := a.db.Query(q, domArgs...)
+		args := append(domArgs, DominanceThreshold*100)
+		rows, err := a.db.Query(q, args...)
 		if err != nil {
 			return
 		}
@@ -401,28 +369,7 @@ func (a *App) exportAnomalies(c *gin.Context) {
 			"buyer_eik", "buyer_name", "supplier_eik", "supplier_name",
 			"total_wins", "years_active", "total_value", "years",
 		})
-		raConds := []string{}
-		raArgs := []any{}
-		if buyerEIK != "" {
-			raConds = append(raConds, "buyer_eik = ?")
-			raArgs = append(raArgs, buyerEIK)
-		}
-		if supplierEIK != "" {
-			raConds = append(raConds, "supplier_eik = ?")
-			raArgs = append(raArgs, supplierEIK)
-		}
-		if yearFrom != "" {
-			raConds = append(raConds, "year >= ?")
-			raArgs = append(raArgs, yearFrom)
-		}
-		if yearTo != "" {
-			raConds = append(raConds, "year <= ?")
-			raArgs = append(raArgs, yearTo)
-		}
-		raWhere := ""
-		if len(raConds) > 0 {
-			raWhere = "WHERE " + strings.Join(raConds, " AND ")
-		}
+		raWhere, raArgs := whereClause(buildFilters(buyerEIK, supplierEIK, yearFrom, yearTo))
 		q := `
 			WITH pair_years AS (
 				SELECT buyer_eik, buyer_name, supplier_eik, supplier_name, year,
@@ -453,8 +400,8 @@ func (a *App) exportAnomalies(c *gin.Context) {
 			FROM filtered
 			ORDER BY years_active DESC, total_wins DESC
 			LIMIT 10000`
-		raArgs = append(raArgs, RepeatedAwardMinYears, RepeatedAwardMinWins)
-		rows, err := a.db.Query(q, raArgs...)
+		args := append(raArgs, RepeatedAwardMinYears, RepeatedAwardMinWins)
+		rows, err := a.db.Query(q, args...)
 		if err != nil {
 			return
 		}

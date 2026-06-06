@@ -3,8 +3,8 @@ package main
 import (
 	"database/sql"
 	"net/http"
-	"strings"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/gin-gonic/gin"
 )
 
@@ -70,66 +70,53 @@ func (a *App) listContracts(c *gin.Context) {
 	}
 	orderClause := col + " " + dir + " NULLS LAST"
 
-	conds := []string{}
-	args := []any{}
+	qb := sb.Select(
+		"data_source", "row_key", "ocid", "year", "contract_date",
+		"buyer_eik", "buyer_name", "supplier_eik", "supplier_name",
+		"contract_value", "currency", "procurement_number", "title",
+		"procurement_category", "bid_count", "procurement_method", "eu_funded",
+		"legacy_type", "COUNT(*) OVER () AS total",
+	).From("contracts_unified")
 
 	if q != "" {
-		conds = append(conds, "(title ILIKE ? OR buyer_name ILIKE ? OR supplier_name ILIKE ?)")
 		pct := "%" + q + "%"
-		args = append(args, pct, pct, pct)
+		qb = qb.Where(sq.Or{
+			sq.Expr("title ILIKE ?", pct),
+			sq.Expr("buyer_name ILIKE ?", pct),
+			sq.Expr("supplier_name ILIKE ?", pct),
+		})
 	}
 	if buyerEIK != "" {
-		conds = append(conds, "buyer_eik = ?")
-		args = append(args, buyerEIK)
+		qb = qb.Where(sq.Eq{"buyer_eik": buyerEIK})
 	}
 	if supplierEIK != "" {
-		conds = append(conds, "supplier_eik = ?")
-		args = append(args, supplierEIK)
+		qb = qb.Where(sq.Eq{"supplier_eik": supplierEIK})
 	}
 	if yearFrom != "" {
-		conds = append(conds, "year >= ?")
-		args = append(args, yearFrom)
+		qb = qb.Where(sq.GtOrEq{"year": yearFrom})
 	}
 	if yearTo != "" {
-		conds = append(conds, "year <= ?")
-		args = append(args, yearTo)
+		qb = qb.Where(sq.LtOrEq{"year": yearTo})
 	}
 	if minValue != "" {
-		conds = append(conds, "contract_value >= ?")
-		args = append(args, minValue)
+		qb = qb.Where(sq.GtOrEq{"contract_value": minValue})
 	}
 	if maxValue != "" {
-		conds = append(conds, "contract_value <= ?")
-		args = append(args, maxValue)
+		qb = qb.Where(sq.LtOrEq{"contract_value": maxValue})
 	}
 	if category != "" {
-		conds = append(conds, "procurement_category = ?")
-		args = append(args, category)
+		qb = qb.Where(sq.Eq{"procurement_category": category})
 	}
 	if source != "" {
-		conds = append(conds, "data_source = ?")
-		args = append(args, source)
+		qb = qb.Where(sq.Eq{"data_source": source})
 	}
+	qb = qb.OrderBy(orderClause).Limit(uint64(perPage)).Offset(uint64(offset))
 
-	where := ""
-	if len(conds) > 0 {
-		where = "WHERE " + strings.Join(conds, " AND ")
+	query, queryArgs, err := qb.ToSql()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
-
-	query := `
-		SELECT
-			data_source, row_key, ocid, year, contract_date,
-			buyer_eik, buyer_name, supplier_eik, supplier_name,
-			contract_value, currency, procurement_number, title,
-			procurement_category, bid_count, procurement_method, eu_funded,
-			legacy_type,
-			COUNT(*) OVER () AS total
-		FROM contracts_unified
-		` + where + `
-		ORDER BY ` + orderClause + `
-		LIMIT ? OFFSET ?`
-
-	queryArgs := append(args, perPage, offset)
 	rows, err := a.db.Query(query, queryArgs...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
