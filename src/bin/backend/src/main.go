@@ -44,6 +44,7 @@ func main() {
 	})
 
 	v1 := r.Group("/api/v1")
+	v1.GET("/", apiGuide)
 	v1.GET("/contracts", app.listContracts)
 	v1.GET("/buyers/:eik", app.getBuyer)
 	v1.GET("/suppliers/:eik", app.getSupplier)
@@ -60,6 +61,59 @@ func main() {
 	if err := r.Run(":" + port); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func apiGuide(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"name":        "Изобличи.ме API",
+		"description": "Public procurement transparency API for Bulgaria. Exposes contracts, buyers, suppliers, anomalies, and statistics from public procurement data (2020-2026).",
+		"version":     "v1",
+		"base_url":    "https://api.izoblichi.me/api/v1",
+		"endpoints": []gin.H{
+			{
+				"path":    "/",
+				"method":  "GET",
+				"desc":    "This guide",
+			},
+			{
+				"path":    "/stats",
+				"method":  "GET",
+				"desc":    "Aggregate statistics — total contracts, total value, unique buyers/suppliers, yearly breakdown",
+			},
+			{
+				"path":    "/contracts",
+				"method":  "GET",
+				"desc":    "List contracts with pagination and filtering",
+				"params":  gin.H{"page": "int (default 1)", "per_page": "int (default 20, max 100)", "buyer_eik": "filter by buyer EIK", "supplier_eik": "filter by supplier EIK", "year": "filter by year (e.g. 2024)", "q": "full-text search on contract title"},
+			},
+			{
+				"path":    "/buyers/:eik",
+				"method":  "GET",
+				"desc":    "Buyer profile — all contracts where this entity is the buyer",
+			},
+			{
+				"path":    "/suppliers/:eik",
+				"method":  "GET",
+				"desc":    "Supplier profile — all contracts where this entity is the supplier",
+			},
+			{
+				"path":    "/parties",
+				"method":  "GET",
+				"desc":    "List all parties (buyers and suppliers) with search and pagination",
+				"params":  gin.H{"page": "int (default 1)", "per_page": "int (default 20, max 100)", "q": "search by name or EIK"},
+			},
+			{
+				"path":    "/parties/:eik",
+				"method":  "GET",
+				"desc":    "Get a single party by EIK",
+			},
+			{
+				"path":    "/anomalies",
+				"method":  "GET",
+				"desc":    "Detected anomalies — high concentration, threshold proximity, single-bidder contracts, repeated award patterns",
+			},
+		},
+	})
 }
 
 func corsMiddleware() gin.HandlerFunc {
