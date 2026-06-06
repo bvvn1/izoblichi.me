@@ -26,6 +26,7 @@ type Contract struct {
 	BidCount            *int64   `json:"bid_count"`
 	ProcurementMethod   *string  `json:"procurement_method"`
 	EUFunded            *bool    `json:"eu_funded"`
+	LegacyType          *string  `json:"legacy_type,omitempty"`
 }
 
 type ContractsResponse struct {
@@ -33,6 +34,14 @@ type ContractsResponse struct {
 	Page    int        `json:"page"`
 	PerPage int        `json:"per_page"`
 	Items   []Contract `json:"items"`
+}
+
+var allowedSortCols = map[string]string{
+	"contract_date":  "contract_date",
+	"contract_value": "contract_value",
+	"year":           "year",
+	"buyer_name":     "buyer_name",
+	"supplier_name":  "supplier_name",
 }
 
 func (a *App) listContracts(c *gin.Context) {
@@ -45,9 +54,21 @@ func (a *App) listContracts(c *gin.Context) {
 	maxValue := c.Query("max_value")
 	category := c.Query("category")
 	source := c.Query("source")
+	sortBy := c.DefaultQuery("sort_by", "contract_date")
+	sortDir := c.DefaultQuery("sort_dir", "desc")
 
 	page, perPage := paginate(c)
 	offset := (page - 1) * perPage
+
+	col, ok := allowedSortCols[sortBy]
+	if !ok {
+		col = "contract_date"
+	}
+	dir := "DESC"
+	if sortDir == "asc" {
+		dir = "ASC"
+	}
+	orderClause := col + " " + dir + " NULLS LAST"
 
 	conds := []string{}
 	args := []any{}
@@ -101,10 +122,11 @@ func (a *App) listContracts(c *gin.Context) {
 			buyer_eik, buyer_name, supplier_eik, supplier_name,
 			contract_value, currency, procurement_number, title,
 			procurement_category, bid_count, procurement_method, eu_funded,
+			legacy_type,
 			COUNT(*) OVER () AS total
 		FROM contracts_unified
 		` + where + `
-		ORDER BY contract_date DESC NULLS LAST
+		ORDER BY ` + orderClause + `
 		LIMIT ? OFFSET ?`
 
 	queryArgs := append(args, perPage, offset)
@@ -118,52 +140,53 @@ func (a *App) listContracts(c *gin.Context) {
 	var items []Contract
 	var total int64
 	for rows.Next() {
+		var ct Contract
 		var (
-			dataSource, rowKey         string
-			ocid                       sql.NullString
-			year                       sql.NullInt64
-			contractDate               sql.NullTime
-			bEIK, bName                sql.NullString
-			sEIK, sName                sql.NullString
-			contractValue              sql.NullFloat64
-			currency                   sql.NullString
-			procNumber, title          sql.NullString
-			procCategory               sql.NullString
-			bidCount                   sql.NullInt64
-			procMethod                 sql.NullString
-			euFunded                   sql.NullBool
-			rowTotal                   int64
+			ocid         sql.NullString
+			year         sql.NullInt64
+			contractDate sql.NullTime
+			bEIK, bName  sql.NullString
+			sEIK, sName  sql.NullString
+			cv           sql.NullFloat64
+			currency     sql.NullString
+			procNum      sql.NullString
+			title        sql.NullString
+			procCat      sql.NullString
+			bidCount     sql.NullInt64
+			procMethod   sql.NullString
+			euFunded     sql.NullBool
+			legacyType   sql.NullString
+			rowTotal     int64
 		)
 		if err := rows.Scan(
-			&dataSource, &rowKey, &ocid, &year, &contractDate,
+			&ct.DataSource, &ct.RowKey, &ocid, &year, &contractDate,
 			&bEIK, &bName, &sEIK, &sName,
-			&contractValue, &currency, &procNumber, &title,
-			&procCategory, &bidCount, &procMethod, &euFunded,
+			&cv, &currency, &procNum, &title,
+			&procCat, &bidCount, &procMethod, &euFunded,
+			&legacyType,
 			&rowTotal,
 		); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		total = rowTotal
-		items = append(items, Contract{
-			DataSource:          dataSource,
-			RowKey:              rowKey,
-			OCID:                nullStr(ocid),
-			Year:                nullI64(year),
-			ContractDate:        nullDate(contractDate),
-			BuyerEIK:            nullStr(bEIK),
-			BuyerName:           nullStr(bName),
-			SupplierEIK:         nullStr(sEIK),
-			SupplierName:        nullStr(sName),
-			ContractValue:       nullF64(contractValue),
-			Currency:            nullStr(currency),
-			ProcurementNumber:   nullStr(procNumber),
-			Title:               nullStr(title),
-			ProcurementCategory: nullStr(procCategory),
-			BidCount:            nullI64(bidCount),
-			ProcurementMethod:   nullStr(procMethod),
-			EUFunded:            nullBool(euFunded),
-		})
+		ct.OCID = nullStr(ocid)
+		ct.Year = nullI64(year)
+		ct.ContractDate = nullDate(contractDate)
+		ct.BuyerEIK = nullStr(bEIK)
+		ct.BuyerName = nullStr(bName)
+		ct.SupplierEIK = nullStr(sEIK)
+		ct.SupplierName = nullStr(sName)
+		ct.ContractValue = nullF64(cv)
+		ct.Currency = nullStr(currency)
+		ct.ProcurementNumber = nullStr(procNum)
+		ct.Title = nullStr(title)
+		ct.ProcurementCategory = nullStr(procCat)
+		ct.BidCount = nullI64(bidCount)
+		ct.ProcurementMethod = nullStr(procMethod)
+		ct.EUFunded = nullBool(euFunded)
+		ct.LegacyType = nullStr(legacyType)
+		items = append(items, ct)
 	}
 	if items == nil {
 		items = []Contract{}
@@ -175,4 +198,76 @@ func (a *App) listContracts(c *gin.Context) {
 		PerPage: perPage,
 		Items:   items,
 	})
+}
+
+func (a *App) getContract(c *gin.Context) {
+	source := c.Param("source")
+	rowKey := c.Param("row_key")
+
+	if source != "legacy" && source != "ocds" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "source must be 'legacy' or 'ocds'"})
+		return
+	}
+
+	query := `
+		SELECT
+			data_source, row_key, ocid, year, contract_date,
+			buyer_eik, buyer_name, supplier_eik, supplier_name,
+			contract_value, currency, procurement_number, title,
+			procurement_category, bid_count, procurement_method, eu_funded,
+			legacy_type
+		FROM contracts_unified
+		WHERE data_source = ? AND row_key = ?
+		LIMIT 1`
+
+	var ct Contract
+	var (
+		ocid         sql.NullString
+		year         sql.NullInt64
+		contractDate sql.NullTime
+		bEIK, bName  sql.NullString
+		sEIK, sName  sql.NullString
+		cv           sql.NullFloat64
+		currency     sql.NullString
+		procNum      sql.NullString
+		title        sql.NullString
+		procCat      sql.NullString
+		bidCount     sql.NullInt64
+		procMethod   sql.NullString
+		euFunded     sql.NullBool
+		legacyType   sql.NullString
+	)
+	err := a.db.QueryRow(query, source, rowKey).Scan(
+		&ct.DataSource, &ct.RowKey, &ocid, &year, &contractDate,
+		&bEIK, &bName, &sEIK, &sName,
+		&cv, &currency, &procNum, &title,
+		&procCat, &bidCount, &procMethod, &euFunded,
+		&legacyType,
+	)
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": "contract not found"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	ct.OCID = nullStr(ocid)
+	ct.Year = nullI64(year)
+	ct.ContractDate = nullDate(contractDate)
+	ct.BuyerEIK = nullStr(bEIK)
+	ct.BuyerName = nullStr(bName)
+	ct.SupplierEIK = nullStr(sEIK)
+	ct.SupplierName = nullStr(sName)
+	ct.ContractValue = nullF64(cv)
+	ct.Currency = nullStr(currency)
+	ct.ProcurementNumber = nullStr(procNum)
+	ct.Title = nullStr(title)
+	ct.ProcurementCategory = nullStr(procCat)
+	ct.BidCount = nullI64(bidCount)
+	ct.ProcurementMethod = nullStr(procMethod)
+	ct.EUFunded = nullBool(euFunded)
+	ct.LegacyType = nullStr(legacyType)
+
+	c.JSON(http.StatusOK, ct)
 }

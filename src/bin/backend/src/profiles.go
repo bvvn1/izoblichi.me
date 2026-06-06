@@ -7,11 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const (
-	ThresholdGoods      = 70_000.0
-	DominanceThreshold  = 0.80
-	NearThresholdMargin = 0.05
-)
 
 type TopCounterpart struct {
 	EIK        *string  `json:"eik"`
