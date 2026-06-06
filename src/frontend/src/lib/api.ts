@@ -1,5 +1,22 @@
 type Fetch = typeof fetch
 
+export interface MapBuyer {
+  eik: string
+  name: string
+  address_locality: string | null
+  address_region: string | null
+  total_contracts: number
+  total_value_bgn: number
+  no_bid_count: number
+  near_threshold_count: number
+  risk_score: number
+}
+
+export interface MapBuyersResponse {
+  total: number
+  items: MapBuyer[]
+}
+
 const BASE_URL = import.meta.env.VITE_API_BASE ?? 'http://localhost:3000'
 
 function client(fetch: Fetch) {
@@ -23,6 +40,7 @@ function client(fetch: Fetch) {
     parties: (p?: PartyParams)     => get<PartyList>('/parties', p as Record<string, string | number | undefined>),
     party: (eik: string)           => get<Party>(`/parties/${eik}`),
     anomalies: ()                  => get<Anomalies>('/anomalies'),
+    mapBuyers: ()                  => get<MapBuyersResponse>('/map/buyers'),
   }
 }
 
