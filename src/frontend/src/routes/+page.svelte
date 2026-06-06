@@ -18,6 +18,37 @@
 
 	const format = (n: number | null) => (n == null ? '—' : formatter.format(n));
 	const formatBgn = (n: number | null) => (n == null ? '—' : bgnFormatter.format(n));
+
+	import { Tween } from 'svelte/motion';
+	import { cubicOut } from 'svelte/easing';
+	import { onMount } from 'svelte';
+
+	const contractsTween = $state(
+		new Tween(0, {
+			duration: 2500,
+			easing: cubicOut
+		})
+	);
+
+	const valueTween = $state(
+		new Tween(0, {
+			duration: 3000,
+			easing: cubicOut
+		})
+	);
+
+	const participantsTween = $state(
+		new Tween(0, {
+			duration: 2500,
+			easing: cubicOut
+		})
+	);
+
+	onMount(() => {
+		contractsTween.set(data.stats.total_contracts);
+		valueTween.set(data.stats.total_value_bgn ?? 0);
+		participantsTween.set(data.stats.unique_buyers + data.stats.unique_suppliers);
+	});
 </script>
 
 <section class="border-b border-base-content/15 py-16 md:py-24">
@@ -55,31 +86,29 @@
 </section>
 
 <div
-	class="grid grid-cols-1 divide-y divide-base-content/15 border-b border-base-content/15 md:grid-cols-3 md:divide-x md:divide-y-0"
+	class="grid grid-cols-1 divide-y divide-base-content/15 border-b border-base-content/15 md:flex md:items-center md:justify-between md:divide-x md:divide-y-0"
 >
-	<div class="py-6 pr-6 md:py-8">
-		<p class="font-display mb-2 text-4xl font-black tracking-tight lg:text-5xl">
-			<span class="text-[#B85C38]">{format(data.stats.total_contracts)}</span>
+	<div class="flex-1 py-6 pr-6 md:py-8">
+		<p class="font-display mb-2 text-3xl font-black tracking-tight sm:text-4xl xl:text-5xl">
+			<span class="text-[#B85C38]">{format(Math.floor(contractsTween.current))}</span>
 		</p>
 		<p class="font-mono text-[10px] tracking-widest text-base-content/50 uppercase md:text-xs">
 			Индексирани договори
 		</p>
 	</div>
 
-	<div class="py-6 pr-6 md:py-8 md:pl-8">
-		<p class="font-display mb-2 text-4xl font-black tracking-tight lg:text-5xl">
-			<span class="text-[#B85C38]">{formatBgn(data.stats.total_value_bgn)}</span>
+	<div class="flex-1 py-6 pr-6 md:py-8 md:pl-8">
+		<p class="font-display mb-2 text-3xl font-black tracking-tight sm:text-4xl xl:text-5xl">
+			<span class="text-[#B85C38]">{formatBgn(Math.floor(valueTween.current))}</span>
 		</p>
 		<p class="font-mono text-[10px] tracking-widest text-base-content/50 uppercase md:text-xs">
 			Обща стойност
 		</p>
 	</div>
 
-	<div class="py-6 md:py-8 md:pl-8">
-		<p class="font-display mb-2 text-4xl font-black tracking-tight lg:text-5xl">
-			<span class="text-[#B85C38]"
-				>{format(data.stats.unique_buyers + data.stats.unique_suppliers)}</span
-			>
+	<div class="flex-1 py-6 md:py-8 md:pl-8">
+		<p class="font-display mb-2 text-3xl font-black tracking-tight sm:text-4xl xl:text-5xl">
+			<span class="text-[#B85C38]">{format(Math.floor(participantsTween.current))}</span>
 		</p>
 		<p class="font-mono text-[10px] tracking-widest text-base-content/50 uppercase md:text-xs">
 			Уникални участници
