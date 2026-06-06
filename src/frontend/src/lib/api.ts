@@ -63,6 +63,7 @@ export interface AnomalyParams extends PaginationParams {
 
 export interface PartyParams extends PaginationParams {
 	q?: string;
+	role?: 'buyer' | 'supplier';
 }
 
 function client(fetch: Fetch) {

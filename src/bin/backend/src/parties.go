@@ -38,6 +38,7 @@ type PartyDetail struct {
 
 func (a *App) listParties(c *gin.Context) {
 	q := c.Query("q")
+	role := c.Query("role")
 	page, perPage := paginate(c)
 	offset := (page - 1) * perPage
 
@@ -54,6 +55,12 @@ func (a *App) listParties(c *gin.Context) {
 			sq.Expr("display_name ILIKE ?", pct),
 			sq.Expr("eik LIKE ?", pct),
 		})
+	}
+
+	if role == "buyer" {
+		qb = qb.Where("EXISTS (SELECT 1 FROM contracts_unified WHERE buyer_eik = parties.eik)")
+	} else if role == "supplier" {
+		qb = qb.Where("EXISTS (SELECT 1 FROM contracts_unified WHERE supplier_eik = parties.eik)")
 	}
 	qb = qb.OrderBy("display_name NULLS LAST", "legal_name NULLS LAST").
 		Limit(uint64(perPage)).Offset(uint64(offset))
