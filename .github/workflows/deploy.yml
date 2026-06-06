@@ -1,0 +1,74 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+env:
+  DEPLOY_USER: root
+  DEPLOY_PATH: /opt/izoblichi
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Backend ──────────────────────────────────────────────────────────
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache-dependency-path: src/bin/backend/go.sum
+
+      - name: Build backend
+        working-directory: src/bin/backend
+        run: go build -o backend ./src
+
+      # ── Frontend ─────────────────────────────────────────────────────────
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install frontend deps
+        working-directory: src/frontend
+        run: bun install --frozen-lockfile
+
+      - name: Build frontend
+        working-directory: src/frontend
+        env:
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
+        run: bun run build
+
+      # ── Deploy ───────────────────────────────────────────────────────────
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Sync backend binary
+        run: |
+          rsync -az \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            src/bin/backend/backend \
+            ${{ env.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ env.DEPLOY_PATH }}/backend
+
+      - name: Sync frontend build
+        run: |
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            src/frontend/build/ \
+            ${{ env.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ env.DEPLOY_PATH }}/frontend/
+
+      - name: Restart services
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            ${{ env.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "chmod +x ${{ env.DEPLOY_PATH }}/backend && \
+             systemctl restart izoblichi-api izoblichi-frontend && \
+             systemctl is-active --quiet izoblichi-api && \
+             systemctl is-active --quiet izoblichi-frontend && \
+             echo 'Both services running.'"
