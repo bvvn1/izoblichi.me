@@ -7,6 +7,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type MonthStat struct {
+	Year             int64   `json:"year"`
+	Month            int64   `json:"month"`
+	ContractCount    int64   `json:"contract_count"`
+	TotalValueBGN    float64 `json:"total_value_bgn"`
+	NoBidCount       int64   `json:"no_bid_count"`
+	CompetitiveCount int64   `json:"competitive_count"`
+}
+
+type TimeseriesResponse struct {
+	Months []MonthStat `json:"months"`
+}
+
 type YearStat struct {
 	Year          int64    `json:"year"`
 	ContractCount int64    `json:"contract_count"`
@@ -20,6 +33,42 @@ type StatsResponse struct {
 	UniqueSuppliers int64      `json:"unique_suppliers"`
 	YearBreakdown   []YearStat `json:"year_breakdown"`
 	DataThrough     *string    `json:"data_through"`
+}
+
+func (a *App) getTimeseries(c *gin.Context) {
+	rows, err := a.db.Query(`
+		SELECT
+			year,
+			EXTRACT(MONTH FROM contract_date)::BIGINT AS month,
+			COUNT(*) AS contract_count,
+			SUM(CASE WHEN currency = 'BGN' THEN contract_value ELSE 0 END) AS total_value_bgn,
+			SUM(CASE WHEN bid_count <= 1 THEN 1 ELSE 0 END) AS no_bid_count,
+			SUM(CASE WHEN bid_count > 1 THEN 1 ELSE 0 END) AS competitive_count
+		FROM contracts_unified
+		WHERE year IS NOT NULL AND contract_date IS NOT NULL
+		GROUP BY year, EXTRACT(MONTH FROM contract_date)
+		ORDER BY year, month`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var months []MonthStat
+	for rows.Next() {
+		var s MonthStat
+		var monthF float64
+		if err := rows.Scan(&s.Year, &monthF, &s.ContractCount, &s.TotalValueBGN, &s.NoBidCount, &s.CompetitiveCount); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		s.Month = int64(monthF)
+		months = append(months, s)
+	}
+	if months == nil {
+		months = []MonthStat{}
+	}
+	c.JSON(http.StatusOK, TimeseriesResponse{Months: months})
 }
 
 func (a *App) getStats(c *gin.Context) {

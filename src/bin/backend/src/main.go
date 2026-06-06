@@ -6,13 +6,16 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
 type App struct {
-	db *sql.DB
+	db     *sql.DB
+	dbPath string // cleaned path without query params, for os.Stat
 }
 
 func main() {
@@ -34,13 +37,36 @@ func main() {
 	db.SetMaxOpenConns(4)
 	db.SetMaxIdleConns(2)
 
-	app := &App{db: db}
+	cleanPath := dbPath
+	if idx := strings.Index(cleanPath, "?"); idx >= 0 {
+		cleanPath = cleanPath[:idx]
+	}
+	app := &App{db: db, dbPath: cleanPath}
 
 	r := gin.Default()
 	r.Use(corsMiddleware())
 
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		stats := app.db.Stats()
+
+		var lastUpdated sql.NullTime
+		app.db.QueryRow(`SELECT MAX(source_file_date) FROM ocds_releases`).Scan(&lastUpdated)
+
+		var dbSizeMB float64
+		if info, err := os.Stat(app.dbPath); err == nil {
+			dbSizeMB = float64(info.Size()) / (1024 * 1024)
+		}
+
+		resp := gin.H{
+			"status":             "ok",
+			"db_size_mb":         dbSizeMB,
+			"active_connections": stats.InUse,
+			"last_updated":       nil,
+		}
+		if lastUpdated.Valid {
+			resp["last_updated"] = lastUpdated.Time.Format(time.RFC3339)
+		}
+		c.JSON(http.StatusOK, resp)
 	})
 
 	v1 := r.Group("/api/v1")
@@ -54,6 +80,13 @@ func main() {
 	v1.GET("/parties", app.listParties)
 	v1.GET("/parties/:eik", app.getParty)
 	v1.GET("/stats", app.getStats)
+	v1.GET("/stats/timeseries", app.getTimeseries)
+	v1.GET("/network/buyer/:eik", app.getBuyerNetwork)
+	v1.GET("/network/supplier/:eik", app.getSupplierNetwork)
+	v1.GET("/map/buyers", app.getMapBuyers)
+	v1.GET("/search/autocomplete", app.autocomplete)
+	v1.GET("/export/contracts", app.exportContracts)
+	v1.GET("/export/anomalies/:type", app.exportAnomalies)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -162,6 +195,42 @@ func apiGuide(c *gin.Context) {
 					"near_threshold_pct": NearThresholdMargin * 100,
 					"dominance_pct":      DominanceThreshold * 100,
 				},
+			},
+			{
+				"path":   "/stats/timeseries",
+				"method": "GET",
+				"desc":   "Monthly breakdown of contract volume, BGN value, no-bid count, and competitive count — ready for time-series charts",
+			},
+			{
+				"path":   "/network/buyer/:eik",
+				"method": "GET",
+				"desc":   "Radial network graph around a buyer — nodes (buyer + up to 50 suppliers) and weighted edges, ready for D3/Cytoscape",
+			},
+			{
+				"path":   "/network/supplier/:eik",
+				"method": "GET",
+				"desc":   "Radial network graph around a supplier — nodes (supplier + up to 50 buyers) and weighted edges",
+			},
+			{
+				"path":   "/map/buyers",
+				"method": "GET",
+				"desc":   "Aggregated buyer data for map visualisation — includes address_locality, address_region, total_value_bgn, and a composite risk_score (0-100)",
+			},
+			{
+				"path":   "/search/autocomplete",
+				"method": "GET",
+				"desc":   "Instant autocomplete — returns up to 5 buyers, 5 suppliers, and 5 contracts matching the query",
+				"params": gin.H{"q": "search string (min 2 chars)"},
+			},
+			{
+				"path":   "/export/contracts",
+				"method": "GET",
+				"desc":   "Download filtered contracts as CSV (max 10 000 rows). Accepts the same filters as /contracts",
+			},
+			{
+				"path":   "/export/anomalies/:type",
+				"method": "GET",
+				"desc":   "Download an anomaly list as CSV. :type is one of near_threshold | no_bid | dominance | repeated_award. Accepts buyer_eik, supplier_eik, year_from, year_to filters",
 			},
 		},
 	})
