@@ -1,39 +1,36 @@
 import type { PageLoad } from './$types';
 import { api } from '$lib/api';
+import type { SortBy, SortDir, DataSource } from '$lib/api';
+import { oneOf } from '$lib/field_validation';
+
+const VALID_SORT_BY: SortBy[] = [
+	'contract_date',
+	'contract_value',
+	'year',
+	'buyer_name',
+	'supplier_name'
+];
+const VALID_SORT_DIR: SortDir[] = ['asc', 'desc'];
+const VALID_SOURCE: DataSource[] = ['legacy', 'ocds'];
 
 export const load: PageLoad = async ({ fetch, url }) => {
-	const q = url.searchParams.get('q') || undefined;
-	const year_from = url.searchParams.get('year_from') || undefined;
-	const year_to = url.searchParams.get('year_to') || undefined;
-	const category = url.searchParams.get('category') || undefined;
-	const source = url.searchParams.get('source') || undefined;
-	const sort_by = url.searchParams.get('sort_by') || undefined;
-	const sort_dir = url.searchParams.get('sort_dir') || undefined;
-	const page = Number(url.searchParams.get('page')) || 1;
+	const p = url.searchParams;
 
-	const result = await api(fetch).contracts({
-		q: q,
-		year_from: year_from ? Number(year_from) : undefined,
-		year_to: year_to ? Number(year_to) : undefined,
-		category: category,
-		source: source as 'legacy' | 'ocds' | undefined,
-		sort_by: (sort_by as 'contract_date' | 'contract_value' | 'year' | 'buyer_name' | 'supplier_name') ?? 'contract_date',
-		sort_dir: (sort_dir as 'asc' | 'desc') ?? 'desc',
-		page,
-		per_page: 25
-	});
+	const filters = {
+		q: p.get('q') ?? '',
+		year_from: p.get('year_from') ? Number(p.get('year_from')) : undefined,
+		year_to: p.get('year_to') ? Number(p.get('year_to')) : undefined,
+		category: p.get('category') ?? '',
+		source: oneOf(p.get('source'), VALID_SOURCE, undefined),
+		sort_by: oneOf(p.get('sort_by'), VALID_SORT_BY, 'contract_date' satisfies SortBy),
+		sort_dir: oneOf(p.get('sort_dir'), VALID_SORT_DIR, 'desc' satisfies SortDir),
+		page: p.get('page') ? Number(p.get('page')) : 1
+	};
+
+	const contracts = await api(fetch).contracts(filters);
 
 	return {
-		result,
-		filters: {
-			q: q,
-			year_from: year_from ? Number(year_from) : undefined,
-			year_to: year_to ? Number(year_to) : undefined,
-			category: category,
-			source: source,
-			sort_by: sort_by,
-			sort_dir: sort_dir,
-			page
-		}
+		filters,
+		contracts
 	};
 };

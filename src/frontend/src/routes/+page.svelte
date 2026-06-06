@@ -1,26 +1,34 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { format, formatCurrency } from '$lib/formatting';
 	import type { PageData } from './$types';
 	import Search from '$lib/Search.svelte';
 	import { Tween } from 'svelte/motion';
-	import { cubicOut } from 'svelte/easing';
+	import { cubicOut, cubicInOut } from 'svelte/easing';
 	import { onMount } from 'svelte';
 
 	let { data }: { data: PageData } = $props();
 
-	const formatter = new Intl.NumberFormat('bg-BG', { notation: 'compact', maximumFractionDigits: 1 });
-	const bgnFormatter = new Intl.NumberFormat('bg-BG', {
-		notation: 'compact',
-		maximumFractionDigits: 1,
-		style: 'currency',
-		currency: 'BGN'
-	});
-	const format = (n: number | null) => (n == null ? '—' : formatter.format(n));
-	const formatBgn = (n: number | null) => (n == null ? '—' : bgnFormatter.format(n));
+	const contractsTween = $state(
+		new Tween(0, {
+			duration: 2500,
+			easing: cubicOut
+		})
+	);
 
-	const contractsTween = $state(new Tween(0, { duration: 2500, easing: cubicOut }));
-	const valueTween = $state(new Tween(0, { duration: 3000, easing: cubicOut }));
-	const participantsTween = $state(new Tween(0, { duration: 2500, easing: cubicOut }));
+	const valueTween = $state(
+		new Tween(0, {
+			duration: 3000,
+			easing: cubicInOut
+		})
+	);
+
+	const participantsTween = $state(
+		new Tween(0, {
+			duration: 2500,
+			easing: cubicOut
+		})
+	);
 
 	onMount(() => {
 		contractsTween.set(data.stats.total_contracts);
@@ -29,8 +37,7 @@
 	});
 </script>
 
-<!-- Hero + Search -->
-<section class="border-b border-base-content/15 pb-12 pt-14 md:pb-16 md:pt-20">
+<section class="border-b border-base-content/15 pt-14 pb-12 md:pt-20 md:pb-16">
 	<p class="mb-5 font-mono text-[11px] tracking-[.22em] text-base-content/40 uppercase">
 		изобличи.ме — обществени поръчки
 	</p>
@@ -38,19 +45,20 @@
 	<h1
 		class="font-display mb-3 max-w-2xl text-[clamp(34px,6vw,60px)] leading-[1.1] font-black tracking-tight"
 	>
-		Правим невидимата
-		<span class="font-serif font-normal text-base-content/35 italic">корупция</span> видима.
+		Правим
+		<span class="font-serif font-normal text-base-content/35 italic">корупцията</span>
+		<span class="mx-1 font-black text-error line-through decoration-error decoration-4">(не)</span
+		>видима.
 	</h1>
 
 	<p class="mb-10 max-w-lg text-sm leading-relaxed text-base-content/50 md:text-base">
 		Търсете договори, разплитайте мрежи и откривайте аномалии в публичните поръчки на България.
 	</p>
 
-	<!-- Search centerpiece -->
 	<div class="max-w-3xl">
 		<Search />
 		<p class="mt-3 font-mono text-[10px] tracking-widest text-base-content/30 uppercase">
-			Опитай: „Министерство на финансите", „болница", „строителство"
+			Опитайте: „Министерство на финансите", „болница", „строителство"...
 		</p>
 	</div>
 </section>
@@ -59,24 +67,26 @@
 <div
 	class="grid grid-cols-1 divide-y divide-base-content/15 border-b border-base-content/15 md:flex md:items-center md:divide-x md:divide-y-0"
 >
-	<div class="flex-1 py-6 pr-6 md:py-7">
-		<p class="font-display mb-1 text-3xl font-black tracking-tight sm:text-4xl">
+	<div class="flex-1 py-6 pr-6 md:py-8">
+		<p class="font-display mb-2 text-3xl font-black tracking-tight sm:text-4xl xl:text-5xl">
 			<span class="text-[#B85C38]">{format(Math.floor(contractsTween.current))}</span>
 		</p>
 		<p class="font-mono text-[10px] tracking-widest text-base-content/50 uppercase">
 			Индексирани договори
 		</p>
 	</div>
-	<div class="flex-1 py-6 pr-6 md:py-7 md:pl-8">
-		<p class="font-display mb-1 text-3xl font-black tracking-tight sm:text-4xl">
-			<span class="text-[#B85C38]">{formatBgn(Math.floor(valueTween.current))}</span>
+
+	<div class="flex-1 py-6 pr-6 md:py-8 md:pl-8">
+		<p class="font-display mb-2 text-3xl font-black tracking-tight sm:text-4xl xl:text-5xl">
+			<span class="text-[#B85C38]">{formatCurrency(Math.floor(valueTween.current), 'BGN')}</span>
 		</p>
 		<p class="font-mono text-[10px] tracking-widest text-base-content/50 uppercase">
 			Обща стойност
 		</p>
 	</div>
-	<div class="flex-1 py-6 md:py-7 md:pl-8">
-		<p class="font-display mb-1 text-3xl font-black tracking-tight sm:text-4xl">
+
+	<div class="flex-1 py-6 md:py-8 md:pl-8">
+		<p class="font-display mb-2 text-3xl font-black tracking-tight sm:text-4xl xl:text-5xl">
 			<span class="text-[#B85C38]">{format(Math.floor(participantsTween.current))}</span>
 		</p>
 		<p class="font-mono text-[10px] tracking-widest text-base-content/50 uppercase">
@@ -85,7 +95,6 @@
 	</div>
 </div>
 
-<!-- Feature grid -->
 <section class="border-b border-base-content/15 py-12 md:py-14">
 	<p class="mb-7 font-mono text-[10px] tracking-[.22em] text-base-content/40 uppercase">
 		Инструменти
@@ -108,9 +117,8 @@
 	</div>
 </section>
 
-<!-- Anomalies CTA -->
 <div
-	class="to-neutral-focus relative my-10 overflow-hidden bg-gradient-to-br from-neutral p-8 text-neutral-content shadow-lg md:my-12 md:p-12"
+	class="to-neutral-focus relative my-12 overflow-hidden rounded-sm bg-linear-to-br from-neutral p-8 text-neutral-content shadow-lg md:p-12"
 >
 	<div
 		class="pointer-events-none absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-[#B85C38]/10 blur-3xl"
@@ -121,7 +129,7 @@
 		<span class="h-2 w-2 animate-pulse rounded-full bg-[#B85C38]"></span>
 		Последен анализ
 	</p>
-	<h2 class="font-display mb-3 max-w-xl text-2xl font-bold leading-tight md:text-3xl">
+	<h2 class="font-display mb-3 max-w-xl text-2xl leading-tight font-bold md:text-3xl">
 		Засечени са аномалии в последните договори.
 	</h2>
 	<p class="mb-6 max-w-xl text-sm leading-relaxed text-neutral-content/70 md:text-base">

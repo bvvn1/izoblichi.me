@@ -2,7 +2,7 @@
 	import { api } from '$lib/api';
 	import type { AutocompleteResponse } from '$lib/types';
 	import { goto } from '$app/navigation';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 
 	let query = $state('');
 	let results: AutocompleteResponse | null = $state(null);
@@ -19,13 +19,12 @@
 	const showDropdown = $derived(open && query.length >= 2);
 	const empty = $derived(results !== null && totalCount === 0 && !loading);
 
-	// flat href list for keyboard navigation
 	const flat = $derived.by((): string[] => {
 		if (!results) return [];
 		return [
-			...results.buyers.map((b) => `${base}/buyers/${b.eik}`),
-			...results.suppliers.map((s) => `${base}/suppliers/${s.eik}`),
-			...results.contracts.map((c) => `${base}/contracts/${c.source}/${c.id}`)
+			...results.buyers.map((b) => resolve(`/buyers/${b.eik}`)),
+			...results.suppliers.map((s) => resolve(`/suppliers/${s.eik}`)),
+			...results.contracts.map((c) => resolve(`/contracts/${c.source}/${c.id}`))
 		];
 	});
 
@@ -50,7 +49,7 @@
 
 	function navigate(href: string) {
 		open = false;
-		goto(href);
+		goto(resolve(href));
 	}
 
 	function submit() {
@@ -59,7 +58,7 @@
 			return;
 		}
 		if (query.trim()) {
-			navigate(`${base}/contracts?q=${encodeURIComponent(query.trim())}`);
+			navigate(resolve(`/contracts?q=${encodeURIComponent(query.trim())}`));
 		}
 	}
 
@@ -94,7 +93,7 @@
 		class="flex items-center gap-3 border-2 border-base-content bg-base-100 px-4 py-3.5 transition-shadow focus-within:shadow-[0_4px_24px_rgba(0,0,0,0.12)] md:px-5 md:py-4"
 	>
 		{#if loading}
-			<span class="loading loading-spinner loading-sm shrink-0 opacity-40"></span>
+			<span class="loading loading-sm shrink-0 loading-spinner opacity-40"></span>
 		{:else}
 			<svg
 				class="h-5 w-5 shrink-0 text-base-content/40"
@@ -160,7 +159,7 @@
 					>
 						Купувачи
 					</p>
-					{#each results.buyers as b, i}
+					{#each results.buyers as buyer, i (buyer.eik)}
 						{@const idx = i}
 						<button
 							class="flex w-full items-center gap-3 px-5 py-2.5 text-left text-sm transition-colors hover:bg-base-200 {activeIndex ===
@@ -168,10 +167,11 @@
 								? 'bg-base-200'
 								: ''}"
 							onmouseover={() => (activeIndex = idx)}
-							onclick={() => navigate(`${base}/buyers/${b.eik}`)}
+							onfocus={() => (activeIndex = idx)}
+							onclick={() => navigate(resolve(`/buyers/${buyer.eik}`))}
 						>
 							<span class="shrink-0 text-base-content/40">🏛</span>
-							<span class="truncate">{b.name}</span>
+							<span class="truncate">{buyer.name}</span>
 						</button>
 					{/each}
 				{/if}
@@ -182,7 +182,7 @@
 					>
 						Доставчици
 					</p>
-					{#each results.suppliers as s, i}
+					{#each results.suppliers as supplier, i (supplier.eik)}
 						{@const idx = buyerCount + i}
 						<button
 							class="flex w-full items-center gap-3 px-5 py-2.5 text-left text-sm transition-colors hover:bg-base-200 {activeIndex ===
@@ -190,10 +190,11 @@
 								? 'bg-base-200'
 								: ''}"
 							onmouseover={() => (activeIndex = idx)}
-							onclick={() => navigate(`${base}/suppliers/${s.eik}`)}
+							onfocus={() => (activeIndex = idx)}
+							onclick={() => navigate(resolve(`/suppliers/${supplier.eik}`))}
 						>
 							<span class="shrink-0 text-base-content/40">💼</span>
-							<span class="truncate">{s.name}</span>
+							<span class="truncate">{supplier.name}</span>
 						</button>
 					{/each}
 				{/if}
@@ -204,7 +205,7 @@
 					>
 						Договори
 					</p>
-					{#each results.contracts as c, i}
+					{#each results.contracts as contract, i (contract.id)}
 						{@const idx = buyerCount + supplierCount + i}
 						<button
 							class="flex w-full items-center gap-3 px-5 py-2.5 text-left text-sm transition-colors hover:bg-base-200 {activeIndex ===
@@ -212,10 +213,11 @@
 								? 'bg-base-200'
 								: ''}"
 							onmouseover={() => (activeIndex = idx)}
-							onclick={() => navigate(`${base}/contracts/${c.source}/${c.id}`)}
+							onfocus={() => (activeIndex = idx)}
+							onclick={() => navigate(resolve(`/contracts/${contract.source}/${contract.id}`))}
 						>
 							<span class="shrink-0 text-base-content/40">📄</span>
-							<span class="line-clamp-1">{c.title}</span>
+							<span class="line-clamp-1">{contract.title}</span>
 						</button>
 					{/each}
 				{/if}
@@ -225,7 +227,7 @@
 			{#if query.trim().length >= 2}
 				<div class="border-t border-base-content/10 px-5 py-2.5">
 					<button
-						onclick={() => navigate(`${base}/contracts?q=${encodeURIComponent(query.trim())}`)}
+						onclick={() => navigate(resolve(`/contracts?q=${encodeURIComponent(query.trim())}`))}
 						class="font-mono text-xs tracking-wider text-base-content/50 transition-colors hover:text-base-content"
 					>
 						Виж всички договори за „{query}" →
