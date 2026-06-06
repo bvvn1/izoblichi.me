@@ -11,27 +11,27 @@ import (
 
 // Bulgarian procurement thresholds (BGN). Works threshold is higher.
 const (
-	ThresholdGoods         = 70_000.0
-	ThresholdServices      = 70_000.0
-	ThresholdWorks         = 264_033.0
-	DominanceThreshold     = 0.80
-	NearThresholdMargin    = 0.05
-	RepeatedAwardMinYears  = 2
-	RepeatedAwardMinWins   = 3
+	ThresholdGoods        = 70_000.0
+	ThresholdServices     = 70_000.0
+	ThresholdWorks        = 264_033.0
+	DominanceThreshold    = 0.80
+	NearThresholdMargin   = 0.05
+	RepeatedAwardMinYears = 2
+	RepeatedAwardMinWins  = 3
 )
 
 type NearThresholdAnomaly struct {
-	ContractValue float64  `json:"contract_value"`
-	Threshold     float64  `json:"threshold"`
-	Gap           float64  `json:"gap"`
-	GapPct        float64  `json:"gap_pct"`
-	BuyerEIK      *string  `json:"buyer_eik"`
-	BuyerName     *string  `json:"buyer_name"`
-	SupplierEIK   *string  `json:"supplier_eik"`
-	SupplierName  *string  `json:"supplier_name"`
-	ContractDate  *string  `json:"contract_date"`
-	Title         *string  `json:"title"`
-	Category      *string  `json:"procurement_category"`
+	ContractValue float64 `json:"contract_value"`
+	Threshold     float64 `json:"threshold"`
+	Gap           float64 `json:"gap"`
+	GapPct        float64 `json:"gap_pct"`
+	BuyerEIK      *string `json:"buyer_eik"`
+	BuyerName     *string `json:"buyer_name"`
+	SupplierEIK   *string `json:"supplier_eik"`
+	SupplierName  *string `json:"supplier_name"`
+	ContractDate  *string `json:"contract_date"`
+	Title         *string `json:"title"`
+	Category      *string `json:"procurement_category"`
 }
 
 type NoBidAnomaly struct {
@@ -58,14 +58,14 @@ type DominanceAnomaly struct {
 }
 
 type RepeatedAwardAnomaly struct {
-	BuyerEIK    *string  `json:"buyer_eik"`
-	BuyerName   *string  `json:"buyer_name"`
-	SupplierEIK *string  `json:"supplier_eik"`
-	SupplierName *string `json:"supplier_name"`
-	TotalWins   int64    `json:"total_wins"`
-	YearsActive int64    `json:"years_active"`
-	TotalValue  *float64 `json:"total_value"`
-	Years       []int64  `json:"years"`
+	BuyerEIK     *string  `json:"buyer_eik"`
+	BuyerName    *string  `json:"buyer_name"`
+	SupplierEIK  *string  `json:"supplier_eik"`
+	SupplierName *string  `json:"supplier_name"`
+	TotalWins    int64    `json:"total_wins"`
+	YearsActive  int64    `json:"years_active"`
+	TotalValue   *float64 `json:"total_value"`
+	Years        []int64  `json:"years"`
 }
 
 type AnomalyPage struct {
@@ -173,7 +173,10 @@ func (a *App) getAnomalies(c *gin.Context) {
 				title, cat               sql.NullString
 				rowTotal                 int64
 			)
-			rows.Scan(&val, &bEIK, &bName, &sEIK, &sName, &cDate, &title, &cat, &rowTotal)
+			if err := rows.Scan(&val, &bEIK, &bName, &sEIK, &sName, &cDate, &title, &cat, &rowTotal); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
 			resp.NearThreshold.Total = rowTotal
 
 			threshold := ThresholdGoods
@@ -228,7 +231,10 @@ func (a *App) getAnomalies(c *gin.Context) {
 				title                    sql.NullString
 				rowTotal                 int64
 			)
-			rows.Scan(&bidCount, &val, &curr, &bEIK, &bName, &sEIK, &sName, &cDate, &title, &rowTotal)
+			if err := rows.Scan(&bidCount, &val, &curr, &bEIK, &bName, &sEIK, &sName, &cDate, &title, &rowTotal); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
 			resp.NoBid.Total = rowTotal
 			resp.NoBid.Items = append(resp.NoBid.Items, NoBidAnomaly{
 				BidCount:      nullI64(bidCount),
@@ -306,7 +312,10 @@ func (a *App) getAnomalies(c *gin.Context) {
 				pct                      float64
 				rowTotal                 int64
 			)
-			rows.Scan(&bEIK, &bName, &sEIK, &sName, &wins, &val, &pct, &totalBuyer, &rowTotal)
+			if err := rows.Scan(&bEIK, &bName, &sEIK, &sName, &wins, &val, &pct, &totalBuyer, &rowTotal); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
 			resp.Dominance.Total = rowTotal
 			resp.Dominance.Items = append(resp.Dominance.Items, DominanceAnomaly{
 				BuyerEIK:            nullStr(bEIK),
@@ -394,13 +403,13 @@ func (a *App) getAnomalies(c *gin.Context) {
 		}
 		for rows.Next() {
 			var (
-				bEIK, bName  sql.NullString
-				sEIK, sName  sql.NullString
-				totalWins    int64
-				yearsActive  int64
-				totalValue   sql.NullFloat64
-				yearsJSON    sql.NullString
-				rowTotal     int64
+				bEIK, bName sql.NullString
+				sEIK, sName sql.NullString
+				totalWins   int64
+				yearsActive int64
+				totalValue  sql.NullFloat64
+				yearsJSON   sql.NullString
+				rowTotal    int64
 			)
 			if err := rows.Scan(&bEIK, &bName, &sEIK, &sName,
 				&totalWins, &yearsActive, &totalValue, &yearsJSON, &rowTotal); err != nil {

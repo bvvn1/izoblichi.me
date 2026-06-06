@@ -75,13 +75,17 @@ func (a *App) getStats(c *gin.Context) {
 	var totalContracts, uniqueBuyers, uniqueSuppliers int64
 	var totalValue sql.NullFloat64
 
-	a.db.QueryRow(`
+	if err := a.db.QueryRow(
+		`
 		SELECT COUNT(*),
 		       SUM(CASE WHEN currency = 'BGN' THEN contract_value ELSE NULL END),
 		       COUNT(DISTINCT buyer_eik),
 		       COUNT(DISTINCT supplier_eik)
 		FROM contracts_unified`,
-	).Scan(&totalContracts, &totalValue, &uniqueBuyers, &uniqueSuppliers)
+	).Scan(&totalContracts, &totalValue, &uniqueBuyers, &uniqueSuppliers); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	rows, err := a.db.Query(`
 		SELECT year, COUNT(*), SUM(contract_value)
@@ -91,19 +95,24 @@ func (a *App) getStats(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	defer rows.Close()
 
 	var yearBreakdown []YearStat
 	for rows.Next() {
 		var yr, cnt int64
 		var val sql.NullFloat64
-		rows.Scan(&yr, &cnt, &val)
+		if err := rows.Scan(&yr, &cnt, &val); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 		yearBreakdown = append(yearBreakdown, YearStat{Year: yr, ContractCount: cnt, TotalValue: nullF64(val)})
 	}
 	rows.Close()
 
 	var dataThrough sql.NullTime
-	a.db.QueryRow(`SELECT MAX(source_file_date) FROM ocds_releases`).Scan(&dataThrough)
+	if err := a.db.QueryRow(`SELECT MAX(source_file_date) FROM ocds_releases`).Scan(&dataThrough); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	if yearBreakdown == nil {
 		yearBreakdown = []YearStat{}

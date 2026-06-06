@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	_ "github.com/duckdb/duckdb-go/v2"
+	"github.com/gin-gonic/gin"
 )
 
 type App struct {
@@ -50,7 +50,10 @@ func main() {
 		stats := app.db.Stats()
 
 		var lastUpdated sql.NullTime
-		app.db.QueryRow(`SELECT MAX(source_file_date) FROM ocds_releases`).Scan(&lastUpdated)
+		if err := app.db.QueryRow(`SELECT MAX(source_file_date) FROM ocds_releases`).Scan(&lastUpdated); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error:": err.Error()})
+			return
+		}
 
 		var dbSizeMB float64
 		if info, err := os.Stat(app.dbPath); err == nil {

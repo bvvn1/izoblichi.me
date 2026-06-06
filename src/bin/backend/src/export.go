@@ -258,7 +258,10 @@ func (a *App) exportAnomalies(c *gin.Context) {
 				cDate                    sql.NullTime
 				title, cat               sql.NullString
 			)
-			rows.Scan(&val, &bEIK, &bName, &sEIK, &sName, &cDate, &title, &cat)
+			if err := rows.Scan(&val, &bEIK, &bName, &sEIK, &sName, &cDate, &title, &cat); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
 			threshold := ThresholdGoods
 			if cat.Valid && (cat.String == "Строителство" || cat.String == "works") {
 				threshold = ThresholdWorks
@@ -304,7 +307,10 @@ func (a *App) exportAnomalies(c *gin.Context) {
 				cDate                    sql.NullTime
 				title                    sql.NullString
 			)
-			rows.Scan(&bidCount, &val, &curr, &bEIK, &bName, &sEIK, &sName, &cDate, &title)
+			if err := rows.Scan(&bidCount, &val, &curr, &bEIK, &bName, &sEIK, &sName, &cDate, &title); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
 			dateStr := ""
 			if cDate.Valid {
 				dateStr = cDate.Time.Format("2006-01-02")
@@ -377,7 +383,10 @@ func (a *App) exportAnomalies(c *gin.Context) {
 				val                      sql.NullFloat64
 				pct                      float64
 			)
-			rows.Scan(&bEIK, &bName, &sEIK, &sName, &wins, &val, &pct, &totalBuyer)
+			if err := rows.Scan(&bEIK, &bName, &sEIK, &sName, &wins, &val, &pct, &totalBuyer); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
 			w.Write([]string{
 				fmtStr(nullStr(bEIK)), fmtStr(nullStr(bName)),
 				fmtStr(nullStr(sEIK)), fmtStr(nullStr(sName)),
@@ -458,7 +467,10 @@ func (a *App) exportAnomalies(c *gin.Context) {
 				totalValue  sql.NullFloat64
 				yearsJSON   sql.NullString
 			)
-			rows.Scan(&bEIK, &bName, &sEIK, &sName, &totalWins, &yearsActive, &totalValue, &yearsJSON)
+			if err := rows.Scan(&bEIK, &bName, &sEIK, &sName, &totalWins, &yearsActive, &totalValue, &yearsJSON); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
 			yearsStr := ""
 			if yearsJSON.Valid {
 				yearsStr = yearsJSON.String

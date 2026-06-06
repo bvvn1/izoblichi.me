@@ -48,12 +48,18 @@ func (a *App) getBuyerNetwork(c *gin.Context) {
 	eik := c.Param("eik")
 
 	var nameFromParties sql.NullString
-	a.db.QueryRow(`SELECT COALESCE(display_name, legal_name) FROM parties WHERE eik = ?`, eik).Scan(&nameFromParties)
+	if err := a.db.QueryRow(`SELECT COALESCE(display_name, legal_name) FROM parties WHERE eik = ?`, eik).Scan(&nameFromParties); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	var totalContracts int64
 	var nameFromContracts sql.NullString
-	a.db.QueryRow(`SELECT COUNT(*), MAX(buyer_name) FROM contracts_unified WHERE buyer_eik = ?`, eik).
-		Scan(&totalContracts, &nameFromContracts)
+	if err := a.db.QueryRow(`SELECT COUNT(*), MAX(buyer_name) FROM contracts_unified WHERE buyer_eik = ?`, eik).
+		Scan(&totalContracts, &nameFromContracts); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	if totalContracts == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "buyer not found"})
@@ -117,12 +123,19 @@ func (a *App) getSupplierNetwork(c *gin.Context) {
 	eik := c.Param("eik")
 
 	var nameFromParties sql.NullString
-	a.db.QueryRow(`SELECT COALESCE(display_name, legal_name) FROM parties WHERE eik = ?`, eik).Scan(&nameFromParties)
+	if err := a.db.QueryRow(`SELECT COALESCE(display_name, legal_name) FROM parties WHERE eik = ?`, eik).Scan(&nameFromParties); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+
+	}
 
 	var totalWins int64
 	var nameFromContracts sql.NullString
-	a.db.QueryRow(`SELECT COUNT(*), MAX(supplier_name) FROM contracts_unified WHERE supplier_eik = ?`, eik).
-		Scan(&totalWins, &nameFromContracts)
+	if err := a.db.QueryRow(`SELECT COUNT(*), MAX(supplier_name) FROM contracts_unified WHERE supplier_eik = ?`, eik).
+		Scan(&totalWins, &nameFromContracts); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	if totalWins == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "supplier not found"})
@@ -158,7 +171,10 @@ func (a *App) getSupplierNetwork(c *gin.Context) {
 		var bEIK, bName sql.NullString
 		var count int64
 		var val sql.NullFloat64
-		rows.Scan(&bEIK, &bName, &count, &val)
+		if err := rows.Scan(&bEIK, &bName, &count, &val); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 		if !bEIK.Valid {
 			continue
 		}

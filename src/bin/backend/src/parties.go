@@ -135,8 +135,14 @@ func (a *App) getParty(c *gin.Context) {
 	}
 
 	var buyerCount, supplierCount int64
-	a.db.QueryRow(`SELECT COUNT(*) FROM contracts_unified WHERE buyer_eik = ?`, eik).Scan(&buyerCount)
-	a.db.QueryRow(`SELECT COUNT(*) FROM contracts_unified WHERE supplier_eik = ?`, eik).Scan(&supplierCount)
+	if err := a.db.QueryRow(`SELECT COUNT(*) FROM contracts_unified WHERE buyer_eik = ?`, eik).Scan(&buyerCount); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if err := a.db.QueryRow(`SELECT COUNT(*) FROM contracts_unified WHERE supplier_eik = ?`, eik).Scan(&supplierCount); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	c.JSON(http.StatusOK, PartyDetail{
 		Party: Party{

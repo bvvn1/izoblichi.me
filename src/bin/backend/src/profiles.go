@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-
 type TopCounterpart struct {
 	EIK        *string  `json:"eik"`
 	Name       *string  `json:"name"`
@@ -66,15 +65,21 @@ func (a *App) getBuyer(c *gin.Context) {
 	eik := c.Param("eik")
 
 	var name, locality, region sql.NullString
-	a.db.QueryRow(
+	if err := a.db.QueryRow(
 		`SELECT COALESCE(display_name, legal_name, ''), address_locality, address_region FROM parties WHERE eik = ?`, eik,
-	).Scan(&name, &locality, &region)
+	).Scan(&name, &locality, &region); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	var totalContracts int64
 	var totalValue sql.NullFloat64
-	a.db.QueryRow(
+	if err := a.db.QueryRow(
 		`SELECT COUNT(*), SUM(contract_value) FROM contracts_unified WHERE buyer_eik = ?`, eik,
-	).Scan(&totalContracts, &totalValue)
+	).Scan(&totalContracts, &totalValue); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	if totalContracts == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "buyer not found"})
@@ -106,7 +111,10 @@ func (a *App) getBuyer(c *gin.Context) {
 		var wins int64
 		var val sql.NullFloat64
 		var pct float64
-		rows.Scan(&sEIK, &sName, &wins, &val, &pct)
+		if err := rows.Scan(&sEIK, &sName, &wins, &val, &pct); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 		if dominantEIK == nil && pct >= DominanceThreshold*100 {
 			dominantEIK = nullStr(sEIK)
 			dominantPct = pct
@@ -136,22 +144,32 @@ func (a *App) getBuyer(c *gin.Context) {
 	for yearRows.Next() {
 		var yr, cnt int64
 		var val sql.NullFloat64
-		yearRows.Scan(&yr, &cnt, &val)
+		if err := yearRows.Scan(&yr, &cnt, &val); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 		yearsActive = append(yearsActive, yr)
 		yearBreakdown = append(yearBreakdown, YearBreakdown{Year: yr, ContractCount: cnt, TotalValue: nullF64(val)})
 	}
 	yearRows.Close()
 
 	var noBidCount int64
-	a.db.QueryRow(`SELECT COUNT(*) FROM contracts_unified WHERE buyer_eik = ? AND bid_count <= 1`, eik).Scan(&noBidCount)
+	if err := a.db.QueryRow(`SELECT COUNT(*) FROM contracts_unified WHERE buyer_eik = ? AND bid_count <= 1`, eik).Scan(&noBidCount); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	var nearThresholdCount int64
-	a.db.QueryRow(`
+	if err := a.db.QueryRow(
+		`
 		SELECT COUNT(*) FROM contracts_unified
 		WHERE buyer_eik = ? AND currency = 'BGN'
 		AND contract_value BETWEEN ? AND ?`,
 		eik, ThresholdGoods*(1-NearThresholdMargin), ThresholdGoods,
-	).Scan(&nearThresholdCount)
+	).Scan(&nearThresholdCount); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	displayName := name.String
 	if displayName == "" {
@@ -192,15 +210,21 @@ func (a *App) getSupplier(c *gin.Context) {
 	eik := c.Param("eik")
 
 	var name, locality, region sql.NullString
-	a.db.QueryRow(
+	if err := a.db.QueryRow(
 		`SELECT COALESCE(display_name, legal_name, ''), address_locality, address_region FROM parties WHERE eik = ?`, eik,
-	).Scan(&name, &locality, &region)
+	).Scan(&name, &locality, &region); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	var totalWins int64
 	var totalValue sql.NullFloat64
-	a.db.QueryRow(
+	if err := a.db.QueryRow(
 		`SELECT COUNT(*), SUM(contract_value) FROM contracts_unified WHERE supplier_eik = ?`, eik,
-	).Scan(&totalWins, &totalValue)
+	).Scan(&totalWins, &totalValue); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	if totalWins == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "supplier not found"})
@@ -231,7 +255,10 @@ func (a *App) getSupplier(c *gin.Context) {
 		var wins int64
 		var val sql.NullFloat64
 		var pct float64
-		rows.Scan(&bEIK, &bName, &wins, &val, &pct)
+		if err := rows.Scan(&bEIK, &bName, &wins, &val, &pct); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 		if len(topBuyers) == 0 {
 			topPct = pct
 		}
@@ -259,7 +286,10 @@ func (a *App) getSupplier(c *gin.Context) {
 	for yearRows.Next() {
 		var yr, cnt int64
 		var val sql.NullFloat64
-		yearRows.Scan(&yr, &cnt, &val)
+		if err := yearRows.Scan(&yr, &cnt, &val); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 		yearBreakdown = append(yearBreakdown, YearBreakdown{Year: yr, ContractCount: cnt, TotalValue: nullF64(val)})
 	}
 	yearRows.Close()
