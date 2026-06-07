@@ -38,11 +38,12 @@
 
 <div class="mx-auto max-w-screen-2xl px-6">
 	<nav class="flex items-center justify-between border-b-2 border-base-content py-4">
-		<span class="font-mono text-xs font-medium tracking-widest uppercase">Обществени поръчки</span>
-		<span
-			class="rounded-sm bg-base-content px-3 py-1 font-mono text-xs tracking-widest text-base-100"
-			>Open Data</span
-		>
+		<a href="/" class="nav-brand hover:opacity-70 transition-opacity">изобличи.ме</a>
+		<div class="flex items-center gap-6">
+			<a href="/contracts" class="font-mono text-xs tracking-widest text-base-content/55 hover:text-base-content transition-colors uppercase">Договори</a>
+			<a href="/anomalies" class="font-mono text-xs tracking-widest text-base-content/55 hover:text-base-content transition-colors uppercase">Аномалии</a>
+			<a href="/map" class="font-mono text-xs tracking-widest text-base-content/55 hover:text-base-content transition-colors uppercase">Карта</a>
+		</div>
 	</nav>
 
 	<div class="w-full overflow-hidden border-b border-base-content/15 py-2 select-none">
@@ -78,6 +79,13 @@
 <style>
 	:global(main) {
 		view-transition-name: page-content;
+	}
+
+	.nav-brand {
+		font-family: 'Playfair Display', Georgia, serif;
+		font-size: 1.1rem;
+		font-weight: 900;
+		letter-spacing: -0.02em;
 	}
 
 	.ticker-items {
