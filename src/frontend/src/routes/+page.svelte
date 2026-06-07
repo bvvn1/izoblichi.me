@@ -254,11 +254,11 @@
 			<div class="space-y-1">
 				<div class="flex items-center justify-between rounded-sm bg-base-200/60 px-3 py-1.5">
 					<span class="font-mono text-[10px] text-base-content/50 uppercase">Стоки / Услуги</span>
-					<span class="font-mono text-[10px] font-medium">66 500 – 70 000 лв.</span>
+					<span class="font-mono text-[10px] font-medium">34 000 – 35 791 €</span>
 				</div>
 				<div class="flex items-center justify-between rounded-sm bg-base-200/60 px-3 py-1.5">
 					<span class="font-mono text-[10px] text-base-content/50 uppercase">Строителство</span>
-					<span class="font-mono text-[10px] font-medium">251 000 – 264 033 лв.</span>
+					<span class="font-mono text-[10px] font-medium">128 000 – 135 002 €</span>
 				</div>
 			</div>
 		</div>

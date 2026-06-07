@@ -55,7 +55,7 @@
 
 	const fmt = (n: number) =>
 		Intl.NumberFormat('bg-BG', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
-	const fmtBgn = (n: number) => fmt(n) + ' лв.';
+	const fmtEur = (n: number) => fmt(n / 1.95583) + ' €';
 
 	let mapEl: HTMLDivElement;
 	let map: any; // typed as any since L is now dynamically imported
@@ -91,7 +91,7 @@
 			}).addTo(map);
 
 			circle.bindTooltip(
-				`<strong>${g.city}</strong><br>${fmtBgn(g.totalValueBGN)}<br>${g.buyers.length} купувача`,
+				`<strong>${g.city}</strong><br>${fmtEur(g.totalValueBGN)}<br>${g.buyers.length} купувача`,
 				{ sticky: true, className: 'leaflet-tooltip-dark' }
 			);
 
@@ -158,7 +158,7 @@
 					<div class="mb-4 grid grid-cols-2 gap-3">
 						<div>
 							<p class="mb-0.5 font-mono text-xs text-base-content/40">Стойност</p>
-							<p class="text-sm font-medium">{fmtBgn(selectedCity.totalValueBGN)}</p>
+							<p class="text-sm font-medium">{fmtEur(selectedCity.totalValueBGN)}</p>
 						</div>
 						<div>
 							<p class="mb-0.5 font-mono text-xs text-base-content/40">Договори</p>
@@ -188,7 +188,7 @@
 									>{buyer.name}</a
 								>
 								<span class="text-base-content/50"
-									>{fmtBgn(buyer.total_value_bgn)} · риск {buyer.risk_score.toFixed(0)}</span
+									>{fmtEur(buyer.total_value_bgn)} · риск {buyer.risk_score.toFixed(0)}</span
 								>
 							</li>
 						{/each}
@@ -290,11 +290,11 @@
 			<div class="space-y-1">
 				<div class="flex items-center justify-between rounded-sm bg-base-200/60 px-3 py-1.5">
 					<span class="font-mono text-[10px] text-base-content/50 uppercase">Стоки / Услуги</span>
-					<span class="font-mono text-[10px] font-medium">66 500 – 70 000 лв.</span>
+					<span class="font-mono text-[10px] font-medium">34 000 – 35 791 €</span>
 				</div>
 				<div class="flex items-center justify-between rounded-sm bg-base-200/60 px-3 py-1.5">
 					<span class="font-mono text-[10px] text-base-content/50 uppercase">Строителство</span>
-					<span class="font-mono text-[10px] font-medium">251 000 – 264 033 лв.</span>
+					<span class="font-mono text-[10px] font-medium">128 000 – 135 002 €</span>
 				</div>
 			</div>
 		</div>

@@ -106,7 +106,7 @@
 	</div>
 	<div class="p-5 md:p-6">
 		<p class="font-display mb-1 text-2xl font-black text-[#B85C38] sm:text-3xl">
-			{formatCurrency(profile.total_value, 'BGN')}
+			{formatCurrency(profile.total_value, profile.currency)}
 		</p>
 		<p class="font-mono text-[10px] tracking-widest text-base-content/50 uppercase">
 			Обща стойност

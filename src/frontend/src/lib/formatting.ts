@@ -1,10 +1,12 @@
+const BGN_TO_EUR = 1.95583;
+
 const formatter = new Intl.NumberFormat('bg-BG', {
 	notation: 'compact',
 	maximumFractionDigits: 1
 });
-const bgnFormatter = new Intl.NumberFormat('bg-BG', {
+const eurFormatter = new Intl.NumberFormat('bg-BG', {
 	style: 'currency',
-	currency: 'BGN',
+	currency: 'EUR',
 	minimumFractionDigits: 0,
 	maximumFractionDigits: 0
 });
@@ -17,7 +19,8 @@ const percentFormatter = new Intl.NumberFormat('bg-BG', {
 export const format = (n: number | null) => (n == null ? '—' : formatter.format(n));
 export const formatCurrency = (n: number | null, currency: string | null) => {
 	if (n == null) return '—';
-	if (currency === 'BGN') return bgnFormatter.format(n);
+	if (currency === 'BGN') return eurFormatter.format(n / BGN_TO_EUR);
+	if (currency === 'EUR') return eurFormatter.format(n);
 	return formatter.format(n) + ' ' + (currency || '');
 };
 export const formatDate = (d: string | null) => {
