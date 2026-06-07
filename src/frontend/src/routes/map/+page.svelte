@@ -1,11 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import type { PageData } from './$types';
-	import type { MapBuyer } from '$lib/api';
-	import { resolve } from '$app/paths';
 	import { getCityCoords, normalizeCity } from '$lib/cities';
-	import { Map } from 'leaflet';
-	import * as L from 'leaflet';
 
 	let { data }: { data: PageData } = $props();
 
@@ -14,15 +10,15 @@
 		city: string;
 		lat: number;
 		lng: number;
-		buyers: MapBuyer[];
+		buyers: any;
 		totalValueBGN: number;
 		totalContracts: number;
 		avgRiskScore: number;
 		noBidCount: number;
 	}
 
-	function buildCityGroups(buyers: MapBuyer[]): CityGroup[] {
-		const map = new Map<string, { city: string; lat: number; lng: number; buyers: MapBuyer[] }>();
+	function buildCityGroups(buyers: any): CityGroup[] {
+		const map = new Map<string, { city: string; lat: number; lng: number; buyers: any }>();
 		for (const b of buyers) {
 			const coords = getCityCoords(b.address_locality);
 			if (!coords) continue;
@@ -62,16 +58,14 @@
 	const fmtBgn = (n: number) => fmt(n) + ' лв.';
 
 	let mapEl: HTMLDivElement;
-	let map: Map;
+	let map: any; // typed as any since L is now dynamically imported
 	let selectedCity: CityGroup | null = $state(null);
 	let showUnmapped = $state(false);
 
 	onMount(async () => {
-		// Leaflet CSS
-		const link = document.createElement('link');
-		link.rel = 'stylesheet';
-		link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-		document.head.appendChild(link);
+		// ✅ Dynamic import keeps Leaflet out of SSR entirely
+		const L = await import('leaflet');
+		await import('leaflet/dist/leaflet.css');
 
 		map = L.map(mapEl, {
 			center: [42.73, 25.48],
