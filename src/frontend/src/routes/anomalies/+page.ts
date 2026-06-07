@@ -1,28 +1,31 @@
 import type { PageLoad } from './$types';
 import { api } from '$lib/api';
 import type { AnomalyType } from '$lib/api';
+import { oneOf } from '$lib/field_validation';
+
+const VALID_ANOMALY_TYPE: AnomalyType[] = [
+	'near_threshold',
+	'no_bid',
+	'dominance',
+	'repeated_award'
+];
 
 export const load: PageLoad = async ({ fetch, url }) => {
-	const type = (url.searchParams.get('type') as AnomalyType) || 'near_threshold';
-	const year_from = url.searchParams.get('year_from') || undefined;
-	const year_to = url.searchParams.get('year_to') || undefined;
-	const page = Number(url.searchParams.get('page')) || 1;
+	const p = url.searchParams;
 
-	const result = await api(fetch).anomalies({
-		type,
-		year_from: year_from ? Number(year_from) : undefined,
-		year_to: year_to ? Number(year_to) : undefined,
-		page,
-		per_page: 25
-	});
+	const filters = {
+		type: oneOf(p.get('type'), VALID_ANOMALY_TYPE, 'near_threshold' satisfies AnomalyType),
+		year_from: p.get('year_from') ? Number(p.get('year_from')) : undefined,
+		year_to: p.get('year_to') ? Number(p.get('year_to')) : undefined,
+		page: p.get('page') ? Number(p.get('page')) : 1
+	};
+
+	const combinedFilters = { filters, per_page: 25 };
+
+	const anomalies = await api(fetch).anomalies(combinedFilters);
 
 	return {
-		result,
-		filters: {
-			type,
-			year_from: year_from ? Number(year_from) : undefined,
-			year_to: year_to ? Number(year_to) : undefined,
-			page
-		}
+		filters,
+		anomalies
 	};
 };

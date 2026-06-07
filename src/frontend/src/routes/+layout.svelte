@@ -2,6 +2,7 @@
 	import '../app.css';
 	import type { LayoutData } from './$types';
 	import { onNavigate } from '$app/navigation';
+	import { formatDate } from '$lib/formatting';
 	const tickerEntries = ['Купувачи', 'Анализ', 'Прозрачност'];
 	let { children, data }: { children; data: LayoutData } = $props();
 
@@ -68,7 +69,7 @@
 
 	<footer class="flex items-center justify-between border-t border-base-content/15 py-6">
 		<span class="font-mono text-xs text-base-content/40">
-			Последно обновление на данните: {new Date(data.stats.data_through ?? '').toLocaleDateString()}
+			Последно обновление на данните: {formatDate(data.stats.data_through)}
 		</span>
 		<span class="font-mono text-xs text-base-content/40">Open source</span>
 	</footer>
