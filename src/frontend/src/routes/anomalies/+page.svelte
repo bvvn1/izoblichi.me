@@ -14,13 +14,10 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let formValues = $derived({
-		yearFrom: data.filters.year_from?.toString() ?? '',
-		yearTo: data.filters.year_to?.toString() ?? ''
-	});
+	let filters = $state(data.filters);
 
-	const type = $derived<AnomalyType>(data.filters.type ?? 'near_threshold');
-	const page = $derived(data.filters.page ?? 1);
+	const type = $derived<AnomalyType>(filters.type ?? 'near_threshold');
+	const page = $derived(filters.page ?? 1);
 	const section = $derived(data.anomalies[type]);
 
 	const totalPages = $derived(Math.ceil(section.total / section.per_page));
@@ -67,13 +64,12 @@
 		const activeType = overrides.type ?? type;
 		const activePage = overrides.page ?? page;
 		if (activeType !== 'near_threshold') params.set('type', activeType);
-		if (formValues.yearFrom) params.set('year_from', formValues.yearFrom);
-		if (formValues.yearTo) params.set('year_to', formValues.yearTo);
-		if (activePage > 1) params.set('page', String(activePage));
+		if (filters.year_from) params.set('year_from', filters.year_from.toString());
+		if (filters.year_to) params.set('year_to', filters.year_to.toString());
+		if (activePage > 1) params.set('page', activePage.toString());
 
 		goto(resolve(`/anomalies?${params}`), {
 			keepFocus: true,
-			replaceState: true,
 			invalidateAll: true
 		});
 	}
@@ -142,7 +138,7 @@
 <!-- Filters -->
 <div class="border-b border-base-content/15 py-5">
 	<div class="flex flex-wrap items-end gap-3">
-		{#each [{ id: 'yearFrom', label: 'Година от', bind: 'yearFrom', placeholder: '2020' }, { id: 'yearTo', label: 'Година до', bind: 'yearTo', placeholder: '2026' }] as filter (filter.id)}
+		{#each [{ id: 'yearFrom', label: 'Година от', key: 'year_from', placeholder: '2020' }, { id: 'yearTo', label: 'Година до', key: 'year_to', placeholder: '2026' }] as filter (filter.id)}
 			<div style="min-width:90px">
 				<label
 					for={filter.id}
@@ -156,7 +152,7 @@
 					min="2020"
 					max="2026"
 					placeholder={filter.placeholder}
-					bind:value={formValues[filter.id]}
+					bind:value={filters[filter.key]}
 					onchange={() => nav({ page: 1 })}
 					class="input w-full rounded-sm font-mono text-xs"
 				/>
@@ -164,8 +160,8 @@
 		{/each}
 		<button
 			onclick={() => {
-				formValues.yearFrom = '';
-				formValues.yearTo = '';
+				filters.year_from = undefined;
+				filters.year_to = undefined;
 				nav({ page: 1 });
 			}}
 			class="btn rounded-sm font-mono text-xs btn-outline btn-sm"
@@ -391,19 +387,19 @@
 		</button>
 
 		<div class="flex items-center gap-1">
-			{#each pages as p (p)}
-				{#if p === -1}
+			{#each pages as page_index (page_index)}
+				{#if page_index === -1}
 					<span class="px-1 font-mono text-xs text-base-content/20">…</span>
-				{:else if p === page}
+				{:else if page_index === page}
 					<span class="rounded-sm bg-base-content px-2.5 py-1 font-mono text-xs text-base-100"
-						>{p}</span
+						>{page_index}</span
 					>
 				{:else}
 					<button
-						onclick={() => nav({ page: p })}
+						onclick={() => nav({ page: page_index })}
 						class="rounded-sm px-2.5 py-1 font-mono text-xs transition-colors hover:bg-base-200"
 					>
-						{p}
+						{page_index}
 					</button>
 				{/if}
 			{/each}

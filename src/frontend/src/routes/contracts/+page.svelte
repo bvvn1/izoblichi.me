@@ -8,14 +8,16 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let q = $derived(data.filters.q);
-	let yearFrom = $derived(data.filters.year_from?.toString() ?? '');
-	let yearTo = $derived(data.filters.year_to?.toString() ?? '');
-	let category = $derived(data.filters.category);
-	let source = $derived(data.filters.source);
-	let sortBy = $derived(data.filters.sort_by);
-	let sortDir = $derived(data.filters.sort_dir);
-	let page = $derived(data.filters.page);
+	let filters = $state(data.filters);
+
+	let q = $derived(filters.q);
+	let yearFrom = $derived(filters.year_from?.toString() ?? '');
+	let yearTo = $derived(filters.year_to?.toString() ?? '');
+	let category = $derived(filters.category);
+	let source = $derived(filters.source);
+	let sortBy = $derived(filters.sort_by);
+	let sortDir = $derived(filters.sort_dir);
+	let page = $derived(filters.page);
 
 	let searchTimeout: ReturnType<typeof setTimeout>;
 
@@ -44,9 +46,9 @@
 		return sortDir === 'desc' ? ' ↓' : ' ↑';
 	}
 
-	function nav(overrides: Partial<typeof data.filters> = {}) {
+	function nav(overrides: Partial<typeof filters> = {}) {
 		const merged = {
-			...data.filters,
+			...filters,
 			q,
 			yearFrom,
 			yearTo,
@@ -60,17 +62,16 @@
 		const params = new SvelteURLSearchParams();
 
 		if (merged.q) params.set('q', merged.q);
-		if (merged.year_from) params.set('year_from', String(merged.year_from));
-		if (merged.year_to) params.set('year_to', String(merged.year_to));
+		if (merged.year_from) params.set('year_from', merged.year_from.toString());
+		if (merged.year_to) params.set('year_to', merged.year_to.toString());
 		if (merged.category) params.set('category', merged.category);
 		if (merged.source) params.set('source', merged.source);
 		if (merged.sort_by) params.set('sort_by', merged.sort_by);
 		if (merged.sort_dir) params.set('sort_dir', merged.sort_dir);
-		if (merged.page > 1) params.set('page', String(merged.page));
+		if (merged.page > 1) params.set('page', merged.page.toString());
 
 		goto(resolve(`/contracts?${params}`), {
 			keepFocus: true,
-			replaceState: true,
 			invalidateAll: true
 		});
 	}
@@ -126,7 +127,7 @@
 			<input
 				id="search"
 				type="text"
-				bind:value={q}
+				bind:value={filters.q}
 				oninput={updateSearch}
 				placeholder="Търси по заглавие, купувач или доставчик…"
 				class="input w-full rounded-sm font-mono text-xs"
@@ -144,7 +145,7 @@
 				type="number"
 				min="2020"
 				max="2026"
-				bind:value={yearFrom}
+				bind:value={filters.year_from}
 				onchange={updateFilter}
 				placeholder="2020"
 				class="input w-full rounded-sm font-mono text-xs"
@@ -162,7 +163,7 @@
 				type="number"
 				min="2020"
 				max="2026"
-				bind:value={yearTo}
+				bind:value={filters.year_to}
 				onchange={updateFilter}
 				placeholder="2026"
 				class="input w-full rounded-sm font-mono text-xs"
@@ -177,7 +178,7 @@
 			>
 			<select
 				id="source"
-				bind:value={source}
+				bind:value={filters.source}
 				onchange={updateFilter}
 				class="select w-full rounded-sm font-mono text-xs"
 			>
@@ -348,7 +349,7 @@
 		<button
 			disabled={page <= 1}
 			onclick={() => {
-				page--;
+				filters.page--;
 				nav();
 			}}
 			class="btn rounded-sm font-mono text-xs btn-ghost btn-sm disabled:opacity-30"
@@ -367,7 +368,7 @@
 				{:else}
 					<button
 						onclick={() => {
-							page = page_index;
+							filters.page = page_index;
 							nav();
 						}}
 						class="rounded-sm px-2.5 py-1 font-mono text-xs transition-colors hover:bg-base-200"
@@ -381,7 +382,7 @@
 		<button
 			disabled={page >= totalPages}
 			onclick={() => {
-				page++;
+				filters.page++;
 				nav();
 			}}
 			class="btn rounded-sm font-mono text-xs btn-ghost btn-sm disabled:opacity-30"
