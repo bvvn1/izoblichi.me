@@ -134,13 +134,13 @@
 </section>
 
 <div class="py-6">
-	<div class="flex gap-6">
+	<div class="flex flex-col gap-6 lg:flex-row">
 		<!-- Map -->
 		<div class="min-w-0 flex-1">
 			<div
 				bind:this={mapEl}
 				class="w-full rounded-sm border border-base-content/15"
-				style="height: 540px"
+				style="height: min(540px, 60vw); min-height: 300px"
 			></div>
 			<p class="mt-2 font-mono text-xs text-base-content/30">
 				{cityGroups.length} градове · {data.mapData.items.length} купувача
@@ -148,7 +148,7 @@
 		</div>
 
 		<!-- Side panel -->
-		<div class="w-72 shrink-0">
+		<div class="w-full shrink-0 lg:w-72">
 			{#if selectedCity}
 				<div class="rounded-sm border border-base-content/15 p-4">
 					<div class="mb-3 flex items-start justify-between">
