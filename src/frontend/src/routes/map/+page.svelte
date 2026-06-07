@@ -134,13 +134,13 @@
 </section>
 
 <div class="py-6">
-	<div class="flex gap-6">
+	<div class="flex flex-col gap-6 lg:flex-row">
 		<!-- Map -->
 		<div class="min-w-0 flex-1">
 			<div
 				bind:this={mapEl}
 				class="w-full rounded-sm border border-base-content/15"
-				style="height: 540px"
+				style="height: min(540px, 60vw); min-height: 300px"
 			></div>
 			<p class="mt-2 font-mono text-xs text-base-content/30">
 				{cityGroups.length} градове · {data.mapData.items.length} купувача
@@ -148,7 +148,7 @@
 		</div>
 
 		<!-- Side panel -->
-		<div class="w-72 shrink-0">
+		<div class="w-full shrink-0 lg:w-72">
 			{#if selectedCity}
 				<div class="rounded-sm border border-base-content/15 p-4">
 					<div class="mb-3 flex items-start justify-between">
@@ -249,4 +249,121 @@
 			{/if}
 		</div>
 	</div>
+	</div>
 </div>
+
+<!-- Anomaly criteria -->
+<section class="border-t border-base-content/15 py-12 md:py-14">
+	<p class="mb-2 font-mono text-[10px] tracking-[.22em] text-base-content/40 uppercase">Методология</p>
+	<h2 class="mb-8 text-xl font-bold md:text-2xl" style="font-family:'Playfair Display',serif">Как засичаме аномалиите</h2>
+
+	<div class="grid grid-cols-1 gap-px overflow-hidden rounded-sm border border-base-content/10 bg-base-content/10 md:grid-cols-2">
+
+		<div class="bg-base-100 p-6 lg:p-7">
+			<div class="mb-4 flex items-start gap-3">
+				<div class="mt-0.5 shrink-0 text-[#B85C38]">
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 15.75 21 21m-4.5-9a6.75 6.75 0 1 1-13.5 0 6.75 6.75 0 0 1 13.5 0Z" />
+					</svg>
+				</div>
+				<div>
+					<p class="mb-0.5 text-sm font-semibold">Близо до прага</p>
+					<p class="font-mono text-[10px] tracking-wider text-base-content/40 uppercase">Near threshold</p>
+				</div>
+			</div>
+			<p class="mb-3 text-sm leading-relaxed text-base-content/60">
+				Договорна стойност в рамките на <strong class="text-base-content">5%</strong> под прага за открита процедура — признак за умишлено занижаване, за да се избегне конкурс.
+			</p>
+			<div class="space-y-1">
+				<div class="flex items-center justify-between rounded-sm bg-base-200/60 px-3 py-1.5">
+					<span class="font-mono text-[10px] text-base-content/50 uppercase">Стоки / Услуги</span>
+					<span class="font-mono text-[10px] font-medium">66 500 – 70 000 лв.</span>
+				</div>
+				<div class="flex items-center justify-between rounded-sm bg-base-200/60 px-3 py-1.5">
+					<span class="font-mono text-[10px] text-base-content/50 uppercase">Строителство</span>
+					<span class="font-mono text-[10px] font-medium">251 000 – 264 033 лв.</span>
+				</div>
+			</div>
+		</div>
+
+		<div class="bg-base-100 p-6 lg:p-7">
+			<div class="mb-4 flex items-start gap-3">
+				<div class="mt-0.5 shrink-0 text-[#B85C38]">
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+					</svg>
+				</div>
+				<div>
+					<p class="mb-0.5 text-sm font-semibold">Без конкуренция</p>
+					<p class="font-mono text-[10px] tracking-wider text-base-content/40 uppercase">No bid</p>
+				</div>
+			</div>
+			<p class="mb-3 text-sm leading-relaxed text-base-content/60">
+				Поръчката е спечелена с <strong class="text-base-content">≤ 1 подадена оферта</strong> — без реална конкуренция. Системното повторение е по-силен сигнал от единичния случай.
+			</p>
+			<div class="flex items-center justify-between rounded-sm bg-base-200/60 px-3 py-1.5">
+				<span class="font-mono text-[10px] text-base-content/50 uppercase">Условие</span>
+				<span class="font-mono text-[10px] font-medium">bid_count ≤ 1</span>
+			</div>
+		</div>
+
+		<div class="bg-base-100 p-6 lg:p-7">
+			<div class="mb-4 flex items-start gap-3">
+				<div class="mt-0.5 shrink-0 text-[#B85C38]">
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+					</svg>
+				</div>
+				<div>
+					<p class="mb-0.5 text-sm font-semibold">Доминиращ доставчик</p>
+					<p class="font-mono text-[10px] tracking-wider text-base-content/40 uppercase">Dominance</p>
+				</div>
+			</div>
+			<p class="mb-3 text-sm leading-relaxed text-base-content/60">
+				Един доставчик печели <strong class="text-base-content">≥ 80%</strong> от всички договори на даден купувач при минимум 5 спечелени — признак на зависимост или скрито договаряне.
+			</p>
+			<div class="space-y-1">
+				<div class="flex items-center justify-between rounded-sm bg-base-200/60 px-3 py-1.5">
+					<span class="font-mono text-[10px] text-base-content/50 uppercase">Дял по брой</span>
+					<span class="font-mono text-[10px] font-medium">≥ 80%</span>
+				</div>
+				<div class="flex items-center justify-between rounded-sm bg-base-200/60 px-3 py-1.5">
+					<span class="font-mono text-[10px] text-base-content/50 uppercase">Мин. договори</span>
+					<span class="font-mono text-[10px] font-medium">≥ 5</span>
+				</div>
+			</div>
+		</div>
+
+		<div class="bg-base-100 p-6 lg:p-7">
+			<div class="mb-4 flex items-start gap-3">
+				<div class="mt-0.5 shrink-0 text-[#B85C38]">
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+					</svg>
+				</div>
+				<div>
+					<p class="mb-0.5 text-sm font-semibold">Системно повторение</p>
+					<p class="font-mono text-[10px] tracking-wider text-base-content/40 uppercase">Repeated award</p>
+				</div>
+			</div>
+			<p class="mb-3 text-sm leading-relaxed text-base-content/60">
+				Двойка купувач–доставчик с трайна шарка: многогодишна история, множество договора и <strong class="text-base-content">≥ 50% без конкуренция</strong>.
+			</p>
+			<div class="space-y-1">
+				<div class="flex items-center justify-between rounded-sm bg-base-200/60 px-3 py-1.5">
+					<span class="font-mono text-[10px] text-base-content/50 uppercase">Активни години</span>
+					<span class="font-mono text-[10px] font-medium">≥ 2</span>
+				</div>
+				<div class="flex items-center justify-between rounded-sm bg-base-200/60 px-3 py-1.5">
+					<span class="font-mono text-[10px] text-base-content/50 uppercase">Общо договори</span>
+					<span class="font-mono text-[10px] font-medium">≥ 3</span>
+				</div>
+				<div class="flex items-center justify-between rounded-sm bg-base-200/60 px-3 py-1.5">
+					<span class="font-mono text-[10px] text-base-content/50 uppercase">Без конкуренция</span>
+					<span class="font-mono text-[10px] font-medium">≥ 50%</span>
+				</div>
+			</div>
+		</div>
+
+	</div>
+</section>
