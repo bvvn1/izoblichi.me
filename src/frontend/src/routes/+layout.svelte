@@ -3,6 +3,7 @@
 	import type { LayoutData } from './$types';
 	import { onNavigate } from '$app/navigation';
 	import { formatDate } from '$lib/formatting';
+	import { resolve } from '$app/paths';
 	const tickerEntries = ['Купувачи', 'Анализ', 'Прозрачност'];
 	let { children, data }: { children; data: LayoutData } = $props();
 
@@ -38,11 +39,23 @@
 
 <div class="mx-auto max-w-screen-2xl px-6">
 	<nav class="flex items-center justify-between border-b-2 border-base-content py-4">
-		<a href="/" class="nav-brand hover:opacity-70 transition-opacity">изобличи.ме</a>
+		<a href={resolve('/')} class="nav-brand transition-opacity hover:opacity-70">изобличи.ме</a>
 		<div class="flex items-center gap-6">
-			<a href="/contracts" class="font-mono text-xs tracking-widest text-base-content/55 hover:text-base-content transition-colors uppercase">Договори</a>
-			<a href="/anomalies" class="font-mono text-xs tracking-widest text-base-content/55 hover:text-base-content transition-colors uppercase">Аномалии</a>
-			<a href="/map" class="font-mono text-xs tracking-widest text-base-content/55 hover:text-base-content transition-colors uppercase">Карта</a>
+			<a
+				href={resolve('/contracts')}
+				class="font-mono text-xs tracking-widest text-base-content/55 uppercase transition-colors hover:text-base-content"
+				>Договори</a
+			>
+			<a
+				href={resolve('/anomalies')}
+				class="font-mono text-xs tracking-widest text-base-content/55 uppercase transition-colors hover:text-base-content"
+				>Аномалии</a
+			>
+			<a
+				href={resolve('/map')}
+				class="font-mono text-xs tracking-widest text-base-content/55 uppercase transition-colors hover:text-base-content"
+				>Карта</a
+			>
 		</div>
 	</nav>
 

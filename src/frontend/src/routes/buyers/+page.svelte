@@ -2,23 +2,14 @@
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import type { PageData } from './$types';
+	import { format, formatDate } from '$lib/formatting';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
 	let { data }: { data: PageData } = $props();
 
-	const formatter = new Intl.NumberFormat('bg-BG', {
-		notation: 'compact',
-		maximumFractionDigits: 1
-	});
-
-	const fmtDate = (d: string | null) => {
-		if (!d) return '—';
-		const date = new Date(d);
-		return date.toLocaleDateString('bg-BG', { year: 'numeric', month: 'short', day: 'numeric' });
-	};
-
-	const filters = $derived(data.filters);
-	let q = $state(data.filters.q || '');
-	let page = $state(filters.page || 1);
+	let filters = $state(data.filters);
+	let q = $derived(data.filters.q);
+	let page = $derived(filters.page);
 
 	let searchTimeout: ReturnType<typeof setTimeout>;
 
@@ -31,12 +22,11 @@
 	}
 
 	function nav() {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		if (q) params.set('q', q);
-		if (page > 1) params.set('page', String(page));
+		if (page > 1) params.set('page', page.toString());
 
-		const qs = params.toString();
-		goto(resolve('/buyers') + (qs ? '?' + qs : ''), { replaceState: true, invalidateAll: true });
+		goto(resolve(`/buyers?${params}`), { replaceState: true, invalidateAll: true });
 	}
 
 	const result = $derived(data.result);
@@ -74,7 +64,7 @@
 		Възложители
 	</h1>
 	<p class="max-w-lg text-sm text-base-content/60">
-		{formatter.format(result.total)} организации — общини, министерства, болници и други публични институции.
+		{format(result.total)} организации — общини, министерства, болници и други публични институции.
 	</p>
 </section>
 
@@ -90,7 +80,7 @@
 			<input
 				id="search"
 				type="text"
-				bind:value={q}
+				bind:value={filters.q}
 				oninput={updateSearch}
 				placeholder="Търси по име или ЕИК…"
 				class="input w-full rounded-sm font-mono text-xs"
@@ -99,8 +89,8 @@
 
 		<button
 			onclick={() => {
-				q = '';
-				page = 1;
+				filters.q = undefined;
+				filters.page = 1;
 				nav();
 			}}
 			class="btn rounded-sm font-mono text-xs btn-outline btn-sm"
@@ -116,7 +106,7 @@
 		Показани {(result.page - 1) * result.per_page + 1}–{Math.min(
 			result.page * result.per_page,
 			result.total
-		)} от {formatter.format(result.total)} резултата
+		)} от {format(result.total)} резултата
 	</p>
 </div>
 
@@ -148,14 +138,14 @@
 					</td>
 				</tr>
 			{:else}
-				{#each result.items as party, i}
+				{#each result.items as party, i (i)}
 					{@const rowNum = (result.page - 1) * result.per_page + i + 1}
 					<tr class="border-b border-base-content/8 transition-colors hover:bg-base-200/50">
 						<td class="font-mono text-xs text-base-content/30">{rowNum}</td>
 						<td>
 							<a
 								href={resolve(`/buyers/${party.eik}`)}
-								class="line-clamp-2 block max-w-[240px] text-xs leading-snug font-medium transition-colors hover:text-[#B85C38]"
+								class="line-clamp-2 block max-w-60 text-xs leading-snug font-medium transition-colors hover:text-[#B85C38]"
 							>
 								{party.display_name || party.legal_name || party.eik}
 							</a>
@@ -164,20 +154,20 @@
 							<span class="font-mono text-xs text-base-content/60">{party.eik}</span>
 						</td>
 						<td>
-							<span class="line-clamp-1 block max-w-[160px] text-xs">
+							<span class="line-clamp-1 block max-w-40 text-xs">
 								{party.address_locality || '—'}
 							</span>
 						</td>
 						<td>
-							<span class="line-clamp-1 block max-w-[140px] text-xs">
+							<span class="line-clamp-1 block max-w-35 text-xs">
 								{party.address_region || '—'}
 							</span>
 						</td>
 						<td class="text-right font-mono text-xs whitespace-nowrap text-base-content/70">
-							{fmtDate(party.first_seen)}
+							{formatDate(party.first_seen)}
 						</td>
 						<td class="text-right font-mono text-xs whitespace-nowrap text-base-content/70">
-							{fmtDate(party.last_seen)}
+							{formatDate(party.last_seen)}
 						</td>
 					</tr>
 				{/each}
@@ -192,7 +182,7 @@
 		<button
 			disabled={page <= 1}
 			onclick={() => {
-				page--;
+				filters.page--;
 				nav();
 			}}
 			class="btn rounded-sm font-mono text-xs btn-ghost btn-sm disabled:opacity-30"
@@ -201,22 +191,22 @@
 		</button>
 
 		<div class="flex items-center gap-1">
-			{#each pages as p}
-				{#if p === -1}
+			{#each pages as page_index, idx (page_index === -1 ? `ellipsis-${idx}` : page_index)}
+				{#if page_index === -1}
 					<span class="px-1 font-mono text-xs text-base-content/20">…</span>
-				{:else if p === page}
+				{:else if page_index === page}
 					<span class="rounded-sm bg-base-content px-2.5 py-1 font-mono text-xs text-base-100"
-						>{p}</span
+						>{page_index}</span
 					>
 				{:else}
 					<button
 						onclick={() => {
-							page = p;
+							filters.page = page_index;
 							nav();
 						}}
 						class="rounded-sm px-2.5 py-1 font-mono text-xs transition-colors hover:bg-base-200"
 					>
-						{p}
+						{page_index}
 					</button>
 				{/if}
 			{/each}
@@ -225,7 +215,7 @@
 		<button
 			disabled={page >= totalPages}
 			onclick={() => {
-				page++;
+				filters.page++;
 				nav();
 			}}
 			class="btn rounded-sm font-mono text-xs btn-ghost btn-sm disabled:opacity-30"

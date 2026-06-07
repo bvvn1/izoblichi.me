@@ -6,7 +6,6 @@
       "name": "izoblichi-me",
       "dependencies": {
         "daisyui": "^5.5.20",
-        "leaflet": "^1.9.4",
       },
       "devDependencies": {
         "@eslint/js": "^10.0.1",
@@ -20,6 +19,7 @@
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-svelte": "^3.17.0",
         "globals": "^17.4.0",
+        "leaflet": "^1.9.4",
         "prettier": "^3.8.1",
         "prettier-plugin-svelte": "^3.5.1",
         "prettier-plugin-tailwindcss": "^0.7.2",
