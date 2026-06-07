@@ -45,8 +45,8 @@ func (a *App) exportContracts(c *gin.Context) {
 	q := c.Query("q")
 	buyerEIK := c.Query("buyer_eik")
 	supplierEIK := c.Query("supplier_eik")
-	yearFrom := c.Query("year_from")
-	yearTo := c.Query("year_to")
+	yearFrom, _ := parseYear(c.Query("year_from"))
+	yearTo, _ := parseYear(c.Query("year_to"))
 	minValue := c.Query("min_value")
 	maxValue := c.Query("max_value")
 	category := c.Query("category")
@@ -73,10 +73,10 @@ func (a *App) exportContracts(c *gin.Context) {
 	if supplierEIK != "" {
 		qb = qb.Where(sq.Eq{"supplier_eik": supplierEIK})
 	}
-	if yearFrom != "" {
+	if yearFrom != 0 {
 		qb = qb.Where(sq.GtOrEq{"year": yearFrom})
 	}
-	if yearTo != "" {
+	if yearTo != 0 {
 		qb = qb.Where(sq.LtOrEq{"year": yearTo})
 	}
 	if minValue != "" {
@@ -181,8 +181,8 @@ func (a *App) exportAnomalies(c *gin.Context) {
 
 	buyerEIK := c.Query("buyer_eik")
 	supplierEIK := c.Query("supplier_eik")
-	yearFrom := c.Query("year_from")
-	yearTo := c.Query("year_to")
+	yearFrom, _ := parseYear(c.Query("year_from"))
+	yearTo, _ := parseYear(c.Query("year_to"))
 
 	c.Header("Content-Type", "text/csv; charset=utf-8")
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="anomalies_%s.csv"`, anomalyType))
@@ -217,10 +217,10 @@ func (a *App) exportAnomalies(c *gin.Context) {
 		if supplierEIK != "" {
 			qb = qb.Where(sq.Eq{"supplier_eik": supplierEIK})
 		}
-		if yearFrom != "" {
+		if yearFrom != 0 {
 			qb = qb.Where(sq.GtOrEq{"year": yearFrom})
 		}
-		if yearTo != "" {
+		if yearTo != 0 {
 			qb = qb.Where(sq.LtOrEq{"year": yearTo})
 		}
 		qb = qb.OrderBy("contract_value DESC").Limit(10000)
@@ -275,10 +275,10 @@ func (a *App) exportAnomalies(c *gin.Context) {
 		if supplierEIK != "" {
 			qb = qb.Where(sq.Eq{"supplier_eik": supplierEIK})
 		}
-		if yearFrom != "" {
+		if yearFrom != 0 {
 			qb = qb.Where(sq.GtOrEq{"year": yearFrom})
 		}
-		if yearTo != "" {
+		if yearTo != 0 {
 			qb = qb.Where(sq.LtOrEq{"year": yearTo})
 		}
 		qb = qb.OrderBy("contract_value DESC NULLS LAST").Limit(10000)

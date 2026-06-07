@@ -44,8 +44,8 @@ func (a *App) listAnnexes(c *gin.Context) {
 	q := c.Query("q")
 	buyerEIK := c.Query("buyer_eik")
 	supplierEIK := c.Query("supplier_eik")
-	yearFrom := c.Query("year_from")
-	yearTo := c.Query("year_to")
+	yearFrom, _ := parseYear(c.Query("year_from"))
+	yearTo, _ := parseYear(c.Query("year_to"))
 	procNum := c.Query("procurement_number")
 
 	page, perPage := paginate(c)
@@ -77,10 +77,10 @@ func (a *App) listAnnexes(c *gin.Context) {
 	if supplierEIK != "" {
 		qb = qb.Where(sq.Eq{"supplier_eik": supplierEIK})
 	}
-	if yearFrom != "" {
+	if yearFrom != 0 {
 		qb = qb.Where(sq.GtOrEq{"source_year": yearFrom})
 	}
-	if yearTo != "" {
+	if yearTo != 0 {
 		qb = qb.Where(sq.LtOrEq{"source_year": yearTo})
 	}
 	if procNum != "" {

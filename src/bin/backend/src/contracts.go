@@ -48,8 +48,8 @@ func (a *App) listContracts(c *gin.Context) {
 	q := c.Query("q")
 	buyerEIK := c.Query("buyer_eik")
 	supplierEIK := c.Query("supplier_eik")
-	yearFrom := c.Query("year_from")
-	yearTo := c.Query("year_to")
+	yearFrom, _ := parseYear(c.Query("year_from"))
+	yearTo, _ := parseYear(c.Query("year_to"))
 	minValue := c.Query("min_value")
 	maxValue := c.Query("max_value")
 	category := c.Query("category")
@@ -92,10 +92,10 @@ func (a *App) listContracts(c *gin.Context) {
 	if supplierEIK != "" {
 		qb = qb.Where(sq.Eq{"supplier_eik": supplierEIK})
 	}
-	if yearFrom != "" {
+	if yearFrom != 0 {
 		qb = qb.Where(sq.GtOrEq{"year": yearFrom})
 	}
-	if yearTo != "" {
+	if yearTo != 0 {
 		qb = qb.Where(sq.LtOrEq{"year": yearTo})
 	}
 	if minValue != "" {

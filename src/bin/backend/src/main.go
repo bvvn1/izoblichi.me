@@ -308,8 +308,20 @@ func nullDate(nt sql.NullTime) *string {
 	return &s
 }
 
+// parseYear parses a query-param year string to int64. Returns 0 and false when empty/unparseable.
+func parseYear(s string) (int64, bool) {
+	if s == "" {
+		return 0, false
+	}
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return n, true
+}
+
 // buildFilters returns squirrel conditions for the standard buyer/supplier/year filters.
-func buildFilters(buyerEIK, supplierEIK, yearFrom, yearTo string) sq.And {
+func buildFilters(buyerEIK, supplierEIK string, yearFrom, yearTo int64) sq.And {
 	var conds sq.And
 	if buyerEIK != "" {
 		conds = append(conds, sq.Eq{"buyer_eik": buyerEIK})
@@ -317,10 +329,10 @@ func buildFilters(buyerEIK, supplierEIK, yearFrom, yearTo string) sq.And {
 	if supplierEIK != "" {
 		conds = append(conds, sq.Eq{"supplier_eik": supplierEIK})
 	}
-	if yearFrom != "" {
+	if yearFrom != 0 {
 		conds = append(conds, sq.GtOrEq{"year": yearFrom})
 	}
-	if yearTo != "" {
+	if yearTo != 0 {
 		conds = append(conds, sq.LtOrEq{"year": yearTo})
 	}
 	return conds

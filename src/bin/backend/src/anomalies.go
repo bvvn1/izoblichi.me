@@ -91,8 +91,8 @@ type AnomalySection[T any] struct {
 func (a *App) getAnomalies(c *gin.Context) {
 	buyerEIK := c.Query("buyer_eik")
 	supplierEIK := c.Query("supplier_eik")
-	yearFrom := c.Query("year_from")
-	yearTo := c.Query("year_to")
+	yearFrom, _ := parseYear(c.Query("year_from"))
+	yearTo, _ := parseYear(c.Query("year_to"))
 	types := c.QueryArray("type")
 	if len(types) == 0 {
 		types = []string{"near_threshold", "no_bid", "dominance", "repeated_award"}
@@ -135,10 +135,10 @@ func (a *App) getAnomalies(c *gin.Context) {
 		if supplierEIK != "" {
 			qb = qb.Where(sq.Eq{"supplier_eik": supplierEIK})
 		}
-		if yearFrom != "" {
+		if yearFrom != 0 {
 			qb = qb.Where(sq.GtOrEq{"year": yearFrom})
 		}
-		if yearTo != "" {
+		if yearTo != 0 {
 			qb = qb.Where(sq.LtOrEq{"year": yearTo})
 		}
 		qb = qb.OrderBy("contract_value DESC").Limit(uint64(perPage)).Offset(uint64(offset))
@@ -206,10 +206,10 @@ func (a *App) getAnomalies(c *gin.Context) {
 		if supplierEIK != "" {
 			qb = qb.Where(sq.Eq{"supplier_eik": supplierEIK})
 		}
-		if yearFrom != "" {
+		if yearFrom != 0 {
 			qb = qb.Where(sq.GtOrEq{"year": yearFrom})
 		}
-		if yearTo != "" {
+		if yearTo != 0 {
 			qb = qb.Where(sq.LtOrEq{"year": yearTo})
 		}
 		qb = qb.OrderBy("contract_value DESC NULLS LAST").Limit(uint64(perPage)).Offset(uint64(offset))
