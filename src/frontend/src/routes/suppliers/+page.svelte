@@ -82,7 +82,11 @@
 <div class="border-b border-base-content/15 py-5">
 	<div class="flex flex-wrap items-end gap-3">
 		<div class="min-w-0 flex-1" style="flex-basis: 320px">
-			<label for="search" class="mb-1 block font-mono text-[10px] tracking-wider text-base-content/40 uppercase">Търсене</label>
+			<label
+				for="search"
+				class="mb-1 block font-mono text-[10px] tracking-wider text-base-content/40 uppercase"
+				>Търсене</label
+			>
 			<input
 				id="search"
 				type="text"
@@ -94,8 +98,12 @@
 		</div>
 
 		<button
-			onclick={() => { q = ''; page = 1; nav(); }}
-			class="btn btn-outline btn-sm rounded-sm font-mono text-xs"
+			onclick={() => {
+				q = '';
+				page = 1;
+				nav();
+			}}
+			class="btn rounded-sm font-mono text-xs btn-outline btn-sm"
 		>
 			Изчисти
 		</button>
@@ -105,22 +113,31 @@
 <!-- Results summary -->
 <div class="flex items-center justify-between py-3">
 	<p class="font-mono text-xs text-base-content/40">
-		Показани {((result.page - 1) * result.per_page) + 1}–{Math.min(result.page * result.per_page, result.total)} от {formatter.format(result.total)} резултата
+		Показани {(result.page - 1) * result.per_page + 1}–{Math.min(
+			result.page * result.per_page,
+			result.total
+		)} от {formatter.format(result.total)} резултата
 	</p>
 </div>
 
 <!-- Table -->
 <div class="overflow-x-auto rounded-sm border border-base-content/15">
-	<table class="table table-xs w-full">
+	<table class="table w-full table-xs">
 		<thead>
 			<tr class="border-b border-base-content/15">
 				<th class="w-8 font-mono text-[10px] tracking-wider text-base-content/40 uppercase">#</th>
 				<th class="font-mono text-[10px] tracking-wider text-base-content/40 uppercase">Име</th>
 				<th class="font-mono text-[10px] tracking-wider text-base-content/40 uppercase">ЕИК</th>
-				<th class="font-mono text-[10px] tracking-wider text-base-content/40 uppercase">Населено място</th>
+				<th class="font-mono text-[10px] tracking-wider text-base-content/40 uppercase"
+					>Населено място</th
+				>
 				<th class="font-mono text-[10px] tracking-wider text-base-content/40 uppercase">Област</th>
-				<th class="text-right font-mono text-[10px] tracking-wider text-base-content/40 uppercase">Първа поява</th>
-				<th class="text-right font-mono text-[10px] tracking-wider text-base-content/40 uppercase">Последна поява</th>
+				<th class="text-right font-mono text-[10px] tracking-wider text-base-content/40 uppercase"
+					>Първа поява</th
+				>
+				<th class="text-right font-mono text-[10px] tracking-wider text-base-content/40 uppercase"
+					>Последна поява</th
+				>
 			</tr>
 		</thead>
 		<tbody>
@@ -156,10 +173,10 @@
 								{party.address_region || '—'}
 							</span>
 						</td>
-						<td class="text-right whitespace-nowrap font-mono text-xs text-base-content/70">
+						<td class="text-right font-mono text-xs whitespace-nowrap text-base-content/70">
 							{fmtDate(party.first_seen)}
 						</td>
-						<td class="text-right whitespace-nowrap font-mono text-xs text-base-content/70">
+						<td class="text-right font-mono text-xs whitespace-nowrap text-base-content/70">
 							{fmtDate(party.last_seen)}
 						</td>
 					</tr>
@@ -174,8 +191,11 @@
 	<div class="flex items-center justify-between py-6">
 		<button
 			disabled={page <= 1}
-			onclick={() => { page--; nav(); }}
-			class="btn btn-ghost btn-sm rounded-sm font-mono text-xs disabled:opacity-30"
+			onclick={() => {
+				page--;
+				nav();
+			}}
+			class="btn rounded-sm font-mono text-xs btn-ghost btn-sm disabled:opacity-30"
 		>
 			← Предишна
 		</button>
@@ -185,10 +205,15 @@
 				{#if p === -1}
 					<span class="px-1 font-mono text-xs text-base-content/20">…</span>
 				{:else if p === page}
-					<span class="rounded-sm bg-base-content px-2.5 py-1 font-mono text-xs text-base-100">{p}</span>
+					<span class="rounded-sm bg-base-content px-2.5 py-1 font-mono text-xs text-base-100"
+						>{p}</span
+					>
 				{:else}
 					<button
-						onclick={() => { page = p; nav(); }}
+						onclick={() => {
+							page = p;
+							nav();
+						}}
 						class="rounded-sm px-2.5 py-1 font-mono text-xs transition-colors hover:bg-base-200"
 					>
 						{p}
@@ -199,8 +224,11 @@
 
 		<button
 			disabled={page >= totalPages}
-			onclick={() => { page++; nav(); }}
-			class="btn btn-ghost btn-sm rounded-sm font-mono text-xs disabled:opacity-30"
+			onclick={() => {
+				page++;
+				nav();
+			}}
+			class="btn rounded-sm font-mono text-xs btn-ghost btn-sm disabled:opacity-30"
 		>
 			Следваща →
 		</button>
