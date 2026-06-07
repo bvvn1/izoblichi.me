@@ -100,7 +100,7 @@
 		Инструменти
 	</p>
 	<div class="grid grid-cols-1 border-t border-l border-base-content/15 md:grid-cols-2">
-		{#each [{ icon: '📋', title: 'Договори', desc: 'Пълнотекстово търсене по заглавие, купувач, доставчик, година и стойност.', href: '/contracts' }, { icon: '🏛', title: 'Купувачи', desc: 'Профил на всеки възложител — история, топ доставчици, концентрация и сигнали.', href: '/parties' }, { icon: '💼', title: 'Доставчици', desc: 'Кои фирми печелят и от кого — разбивка по сектори, години и институции.', href: '/parties' }, { icon: '⚠️', title: 'Аномалии', desc: 'Автоматично засичане на прагове, поръчки с един кандидат и доминиращи доставчици.', href: '/anomalies' }] as const as feature (feature)}
+		{#each [{ icon: '📋', title: 'Договори', desc: 'Пълнотекстово търсене по заглавие, купувач, доставчик, година и стойност.', href: '/contracts' }, { icon: '🏛', title: 'Купувачи', desc: 'Профил на всеки възложител — история, топ доставчици, концентрация и сигнали.', href: '/parties' }, { icon: '💼', title: 'Доставчици', desc: 'Кои фирми печелят и от кого — разбивка по сектори, години и институции.', href: '/suppliers' }, { icon: '⚠️', title: 'Аномалии', desc: 'Автоматично засичане на прагове, поръчки с един кандидат и доминиращи доставчици.', href: '/anomalies' }] as const as feature (feature)}
 			<a
 				href={resolve(feature.href)}
 				class="group block border-r border-b border-base-content/15 p-6 transition-colors hover:bg-base-200/50 lg:p-7"

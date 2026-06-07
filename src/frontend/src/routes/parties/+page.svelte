@@ -7,9 +7,10 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const filters = $state(data.filters);
-	let q = $derived(data.filters.q || '');
-	let page = $derived(filters.page || 1);
+	let filters = $state(data.filters);
+
+	let q = $derived(filters.q);
+	let page = $derived(filters.page);
 
 	let searchTimeout: ReturnType<typeof setTimeout>;
 
@@ -32,8 +33,8 @@
 		});
 	}
 
-	const result = $derived(data.result);
-	const totalPages = $derived(Math.ceil(result.total / result.per_page));
+	const parties = $derived(data.response);
+	const totalPages = $derived(Math.ceil(parties.total / parties.per_page));
 	const pages = $derived.by(() => {
 		const p: number[] = [];
 		const maxVisible = 7;
@@ -58,6 +59,14 @@
 	<title>Юридически лица — изобличи.ме</title>
 </svelte:head>
 
+<nav
+	class="flex items-center gap-2 border-b border-base-content/15 py-3 font-mono text-xs text-base-content/40"
+>
+	<a href={resolve('/')} class="hover:text-base-content">Начало</a>
+	<span>/</span>
+	<a href={resolve('/parties')} class="hover:text-base-content">Юридически лица</a>
+</nav>
+
 <section class="border-b border-base-content/15 py-10">
 	<p class="mb-3 font-mono text-xs tracking-[.14em] text-base-content/50 uppercase">Данни</p>
 	<h1
@@ -67,7 +76,7 @@
 		Юридически лица
 	</h1>
 	<p class="max-w-lg text-sm text-base-content/60">
-		{format(result.total)} организации — всички възложители и изпълнители в системата.
+		{format(parties.total)} организации — всички възложители и изпълнители в системата.
 	</p>
 </section>
 
@@ -106,10 +115,10 @@
 <!-- Results summary -->
 <div class="flex items-center justify-between py-3">
 	<p class="font-mono text-xs text-base-content/40">
-		Показани {(result.page - 1) * result.per_page + 1}–{Math.min(
-			result.page * result.per_page,
-			result.total
-		)} от {format(result.total)} резултата
+		Показани {(parties.page - 1) * parties.per_page + 1}–{Math.min(
+			parties.page * parties.per_page,
+			parties.total
+		)} от {format(parties.total)} резултата
 	</p>
 </div>
 
@@ -134,15 +143,15 @@
 			</tr>
 		</thead>
 		<tbody>
-			{#if result.items.length === 0}
+			{#if parties.items.length === 0}
 				<tr>
 					<td colspan="7" class="py-12 text-center text-sm text-base-content/40">
 						Няма намерени юридически лица.
 					</td>
 				</tr>
 			{:else}
-				{#each result.items as party, i (i)}
-					{@const rowNum = (result.page - 1) * result.per_page + i + 1}
+				{#each parties.items as party, i (i)}
+					{@const rowNum = (parties.page - 1) * parties.per_page + i + 1}
 					<tr class="border-b border-base-content/8 transition-colors hover:bg-base-200/50">
 						<td class="font-mono text-xs text-base-content/30">{rowNum}</td>
 						<td>

@@ -1,16 +1,17 @@
 import type { PageLoad } from './$types';
-import { api } from '$lib/api';
+import { api, type PartyParams } from '$lib/api';
 
 export const load: PageLoad = async ({ fetch, url }) => {
-	const q = url.searchParams.get('q') || undefined;
-	const page = Number(url.searchParams.get('page')) || 1;
+	const p = url.searchParams;
 
-	const result = await api(fetch).parties({
-		q,
-		role: 'supplier',
-		page,
-		per_page: 25
-	});
+	const filters = {
+		q: p.get('q') ?? undefined,
+		page: p.get('page') ? Number(p.get('page')) : 1
+	};
 
-	return { result, filters: { q, page } };
+	const combinedFilters: PartyParams = { ...filters, role: 'supplier', per_page: 25 };
+
+	const result = await api(fetch).parties(combinedFilters);
+
+	return { result, filters };
 };

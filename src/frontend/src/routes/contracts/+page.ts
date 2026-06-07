@@ -17,7 +17,7 @@ export const load: PageLoad = async ({ fetch, url }) => {
 	const p = url.searchParams;
 
 	const filters = {
-		q: p.get('q') ?? '',
+		q: p.get('q') ?? undefined,
 		year_from: p.get('year_from') ? Number(p.get('year_from')) : undefined,
 		year_to: p.get('year_to') ? Number(p.get('year_to')) : undefined,
 		category: p.get('category') ?? '',
