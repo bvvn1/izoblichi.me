@@ -359,7 +359,7 @@
 		</button>
 
 		<div class="flex items-center gap-1">
-			{#each pages as page_index (page_index)}
+			{#each pages as page_index, idx (page_index === -1 ? `ellipsis-${idx}` : page_index)}
 				{#if page_index === -1}
 					<span class="px-1 font-mono text-xs text-base-content/20">…</span>
 				{:else if page_index === page}

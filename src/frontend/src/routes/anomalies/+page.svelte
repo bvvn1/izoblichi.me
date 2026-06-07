@@ -14,7 +14,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let filters = $derived(data.filters);
+	let filters = $state(data.filters);
 
 	const type = $derived<AnomalyType>(filters.type ?? 'near_threshold');
 	const page = $derived(filters.page ?? 1);
@@ -385,19 +385,21 @@
 	</div>
 {/if}
 
-<!-- Pagination -->
 {#if totalPages > 1}
 	<div class="flex items-center justify-between py-6">
 		<button
 			disabled={page <= 1}
-			onclick={() => nav({ page: page - 1 })}
+			onclick={() => {
+				filters.page--;
+				nav();
+			}}
 			class="btn rounded-sm font-mono text-xs btn-ghost btn-sm disabled:opacity-30"
 		>
 			← Предишна
 		</button>
 
 		<div class="flex items-center gap-1">
-			{#each pages as page_index (page_index)}
+			{#each pages as page_index, idx (page_index === -1 ? `ellipsis-${idx}` : page_index)}
 				{#if page_index === -1}
 					<span class="px-1 font-mono text-xs text-base-content/20">…</span>
 				{:else if page_index === page}
@@ -406,7 +408,10 @@
 					>
 				{:else}
 					<button
-						onclick={() => nav({ page: page_index })}
+						onclick={() => {
+							filters.page = page_index;
+							nav();
+						}}
 						class="rounded-sm px-2.5 py-1 font-mono text-xs transition-colors hover:bg-base-200"
 					>
 						{page_index}
@@ -417,7 +422,10 @@
 
 		<button
 			disabled={page >= totalPages}
-			onclick={() => nav({ page: page + 1 })}
+			onclick={() => {
+				filters.page++;
+				nav();
+			}}
 			class="btn rounded-sm font-mono text-xs btn-ghost btn-sm disabled:opacity-30"
 		>
 			Следваща →
