@@ -279,7 +279,7 @@
 								</span>
 							</td>
 							<td class="text-right text-xs font-medium whitespace-nowrap"
-								>{formatCurrency(item.contract_value, 'BGN')}</td
+								>{formatCurrency(item.contract_value, item.currency)}</td
 							>
 							<td>{@render partyLink(item.buyer_name, item.buyer_eik, 'buyers')}</td>
 							<td>{@render partyLink(item.supplier_name, item.supplier_eik, 'suppliers')}</td>

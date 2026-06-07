@@ -1,11 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import type { PageData } from './$types';
-	import type { MapBuyer } from '$lib/api';
-	import { resolve } from '$app/paths';
 	import { getCityCoords, normalizeCity } from '$lib/cities';
-	import { Map } from 'leaflet';
-	import * as L from 'leaflet';
 
 	let { data }: { data: PageData } = $props();
 
@@ -14,15 +10,15 @@
 		city: string;
 		lat: number;
 		lng: number;
-		buyers: MapBuyer[];
+		buyers: any;
 		totalValueBGN: number;
 		totalContracts: number;
 		avgRiskScore: number;
 		noBidCount: number;
 	}
 
-	function buildCityGroups(buyers: MapBuyer[]): CityGroup[] {
-		const map = new Map<string, { city: string; lat: number; lng: number; buyers: MapBuyer[] }>();
+	function buildCityGroups(buyers: any): CityGroup[] {
+		const map = new Map<string, { city: string; lat: number; lng: number; buyers: any }>();
 		for (const b of buyers) {
 			const coords = getCityCoords(b.address_locality);
 			if (!coords) continue;
@@ -59,19 +55,17 @@
 
 	const fmt = (n: number) =>
 		Intl.NumberFormat('bg-BG', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
-	const fmtBgn = (n: number) => fmt(n) + ' лв.';
+	const fmtEur = (n: number) => fmt(n / 1.95583) + ' €';
 
 	let mapEl: HTMLDivElement;
-	let map: Map;
+	let map: any; // typed as any since L is now dynamically imported
 	let selectedCity: CityGroup | null = $state(null);
 	let showUnmapped = $state(false);
 
 	onMount(async () => {
-		// Leaflet CSS
-		const link = document.createElement('link');
-		link.rel = 'stylesheet';
-		link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-		document.head.appendChild(link);
+		// ✅ Dynamic import keeps Leaflet out of SSR entirely
+		const L = await import('leaflet');
+		await import('leaflet/dist/leaflet.css');
 
 		map = L.map(mapEl, {
 			center: [42.73, 25.48],
@@ -97,7 +91,7 @@
 			}).addTo(map);
 
 			circle.bindTooltip(
-				`<strong>${g.city}</strong><br>${fmtBgn(g.totalValueBGN)}<br>${g.buyers.length} купувача`,
+				`<strong>${g.city}</strong><br>${fmtEur(g.totalValueBGN)}<br>${g.buyers.length} купувача`,
 				{ sticky: true, className: 'leaflet-tooltip-dark' }
 			);
 
@@ -164,7 +158,7 @@
 					<div class="mb-4 grid grid-cols-2 gap-3">
 						<div>
 							<p class="mb-0.5 font-mono text-xs text-base-content/40">Стойност</p>
-							<p class="text-sm font-medium">{fmtBgn(selectedCity.totalValueBGN)}</p>
+							<p class="text-sm font-medium">{fmtEur(selectedCity.totalValueBGN)}</p>
 						</div>
 						<div>
 							<p class="mb-0.5 font-mono text-xs text-base-content/40">Договори</p>
@@ -194,7 +188,7 @@
 									>{buyer.name}</a
 								>
 								<span class="text-base-content/50"
-									>{fmtBgn(buyer.total_value_bgn)} · риск {buyer.risk_score.toFixed(0)}</span
+									>{fmtEur(buyer.total_value_bgn)} · риск {buyer.risk_score.toFixed(0)}</span
 								>
 							</li>
 						{/each}
@@ -296,11 +290,11 @@
 			<div class="space-y-1">
 				<div class="flex items-center justify-between rounded-sm bg-base-200/60 px-3 py-1.5">
 					<span class="font-mono text-[10px] text-base-content/50 uppercase">Стоки / Услуги</span>
-					<span class="font-mono text-[10px] font-medium">66 500 – 70 000 лв.</span>
+					<span class="font-mono text-[10px] font-medium">34 000 – 35 791 €</span>
 				</div>
 				<div class="flex items-center justify-between rounded-sm bg-base-200/60 px-3 py-1.5">
 					<span class="font-mono text-[10px] text-base-content/50 uppercase">Строителство</span>
-					<span class="font-mono text-[10px] font-medium">251 000 – 264 033 лв.</span>
+					<span class="font-mono text-[10px] font-medium">128 000 – 135 002 €</span>
 				</div>
 			</div>
 		</div>
