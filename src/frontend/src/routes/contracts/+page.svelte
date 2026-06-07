@@ -11,10 +11,6 @@
 	let filters = $state(data.filters);
 
 	let q = $derived(filters.q);
-	let yearFrom = $derived(filters.year_from?.toString() ?? '');
-	let yearTo = $derived(filters.year_to?.toString() ?? '');
-	let category = $derived(filters.category);
-	let source = $derived(filters.source);
 	let sortBy = $derived(filters.sort_by);
 	let sortDir = $derived(filters.sort_dir);
 	let page = $derived(filters.page);
@@ -33,10 +29,10 @@
 
 	function toggleSort(column: SortBy) {
 		if (sortBy === column) {
-			sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+			filters.sort_dir = sortDir === 'desc' ? 'asc' : 'desc';
 		} else {
-			sortBy = column;
-			sortDir = 'desc';
+			filters.sort_by = column;
+			filters.sort_dir = 'desc';
 		}
 		nav();
 	}
@@ -49,14 +45,6 @@
 	function nav(overrides: Partial<typeof filters> = {}) {
 		const merged = {
 			...filters,
-			q,
-			yearFrom,
-			yearTo,
-			category,
-			source,
-			sortBy,
-			sortDir,
-			page,
 			...overrides
 		};
 		const params = new SvelteURLSearchParams();
@@ -68,6 +56,8 @@
 		if (merged.source) params.set('source', merged.source);
 		if (merged.sort_by) params.set('sort_by', merged.sort_by);
 		if (merged.sort_dir) params.set('sort_dir', merged.sort_dir);
+		if (merged.buyer_eik) params.set('buyer_eik', merged.buyer_eik);
+		if (merged.supplier_eik) params.set('supplier_eik', merged.supplier_eik);
 		if (merged.page > 1) params.set('page', merged.page.toString());
 
 		goto(resolve(`/contracts?${params}`), {
@@ -101,6 +91,15 @@
 <svelte:head>
 	<title>Договори — изобличи.ме</title>
 </svelte:head>
+
+<nav
+	class="flex items-center gap-2 border-b border-base-content/15 py-3 font-mono text-xs text-base-content/40"
+>
+	<a href={resolve('/')} class="hover:text-base-content">Начало</a>
+	<span>/</span>
+	<a href={resolve('/contracts')} class="hover:text-base-content">Договори</a>
+	<span>/</span>
+</nav>
 
 <section class="border-b border-base-content/15 py-10">
 	<p class="mb-3 font-mono text-xs tracking-[.14em] text-base-content/50 uppercase">Данни</p>
@@ -182,7 +181,7 @@
 				onchange={updateFilter}
 				class="select w-full rounded-sm font-mono text-xs"
 			>
-				<option value="">Всички</option>
+				<option value={undefined}>Всички</option>
 				<option value="legacy">Legacy (2020-23)</option>
 				<option value="ocds">OCDS (2026+)</option>
 			</select>
@@ -190,14 +189,16 @@
 
 		<button
 			onclick={() => {
-				q = '';
-				yearFrom = '';
-				yearTo = '';
-				category = '';
-				source = undefined;
-				sortBy = 'contract_date';
-				sortDir = 'desc';
-				page = 1;
+				filters.q = '';
+				filters.year_from = undefined;
+				filters.year_to = undefined;
+				filters.category = '';
+				filters.source = undefined;
+				filters.sort_by = 'contract_date';
+				filters.sort_dir = 'desc';
+				filters.buyer_eik = undefined;
+				filters.supplier_eik = undefined;
+				filters.page = 1;
 				nav();
 			}}
 			class="btn rounded-sm font-mono text-xs btn-outline btn-sm"

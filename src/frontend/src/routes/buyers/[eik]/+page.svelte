@@ -1,28 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import type { PageData } from './$types';
+	import { format, formatCurrency, formatPercent } from '$lib/formatting';
 
 	let { data }: { data: PageData } = $props();
 	const profile = $derived(data.profile);
 
-	const bgnFmt = new Intl.NumberFormat('bg-BG', {
-		style: 'currency',
-		currency: 'BGN',
-		minimumFractionDigits: 0,
-		maximumFractionDigits: 0
-	});
-	const compactFmt = new Intl.NumberFormat('bg-BG', {
-		notation: 'compact',
-		maximumFractionDigits: 1
-	});
-
-	const fmtValue = (n: number | null) => (n == null ? '—' : bgnFmt.format(n));
-	const fmtCompact = (n: number | null) => (n == null ? '—' : compactFmt.format(n));
-	const fmtPct = (n: number) => n.toFixed(1) + '%';
-
-	const maxYearValue = $derived(
-		Math.max(...profile.year_breakdown.map((y) => y.total_value ?? 0), 1)
-	);
 	const maxYearCount = $derived(
 		Math.max(...profile.year_breakdown.map((y) => y.contract_count), 1)
 	);
@@ -73,7 +56,7 @@
 						Доминиращ доставчик
 					</p>
 					<p class="text-xs text-base-content/60">
-						Един доставчик печели {fmtPct(profile.flags.dominant_supplier_pct)} от поръчките
+						Един доставчик печели {formatPercent(profile.flags.dominant_supplier_pct)} от поръчките
 					</p>
 				</div>
 			</div>
@@ -113,13 +96,17 @@
 >
 	<div class="p-5 md:p-6">
 		<p class="font-display mb-1 text-2xl font-black text-[#B85C38] sm:text-3xl">
-			{fmtCompact(profile.total_contracts)}
+			{format(profile.total_contracts)}
 		</p>
-		<p class="font-mono text-[10px] tracking-widest text-base-content/50 uppercase">Договори</p>
+		{#if profile.total_contracts == 1}
+			<p class="font-mono text-[10px] tracking-widest text-base-content/50 uppercase">Договор</p>
+		{:else}
+			<p class="font-mono text-[10px] tracking-widest text-base-content/50 uppercase">Договора</p>
+		{/if}
 	</div>
 	<div class="p-5 md:p-6">
 		<p class="font-display mb-1 text-2xl font-black text-[#B85C38] sm:text-3xl">
-			{fmtValue(profile.total_value)}
+			{formatCurrency(profile.total_value, 'BGN')}
 		</p>
 		<p class="font-mono text-[10px] tracking-widest text-base-content/50 uppercase">
 			Обща стойност
@@ -155,14 +142,14 @@
 					<span class="w-10 shrink-0 font-mono text-xs text-base-content/50">{row.year}</span>
 					<div class="flex flex-1 items-center gap-2">
 						<div
-							class="h-5 min-w-[2px] rounded-sm bg-[#B85C38]/80 transition-all"
+							class="h-5 min-w-0.5 rounded-sm bg-[#B85C38]/80 transition-all"
 							style="width: {(row.contract_count / maxYearCount) * 100}%"
 						></div>
 						<span class="shrink-0 font-mono text-xs text-base-content/60">{row.contract_count}</span
 						>
 					</div>
 					<span class="w-28 shrink-0 text-right font-mono text-xs text-base-content/40"
-						>{fmtValue(row.total_value)}</span
+						>{formatCurrency(row.total_value, 'BGN')}</span
 					>
 				</div>
 			{/each}
@@ -220,7 +207,7 @@
 							</td>
 							<td class="py-3 pr-4 text-right font-mono text-xs text-base-content/70">{s.wins}</td>
 							<td class="py-3 pr-4 text-right font-mono text-xs text-base-content/70"
-								>{fmtValue(s.total_value)}</td
+								>{formatCurrency(s.total_value, 'BGN')}</td
 							>
 							<td class="py-3 pl-4">
 								<div class="flex items-center gap-2">
@@ -231,7 +218,7 @@
 										></div>
 									</div>
 									<span class="font-mono text-[10px] text-base-content/50"
-										>{fmtPct(s.pct_by_count)}</span
+										>{formatPercent(s.pct_by_count)}</span
 									>
 								</div>
 							</td>

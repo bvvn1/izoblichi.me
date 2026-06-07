@@ -24,6 +24,8 @@ export const load: PageLoad = async ({ fetch, url }) => {
 		source: oneOf(p.get('source'), VALID_SOURCE, undefined),
 		sort_by: oneOf(p.get('sort_by'), VALID_SORT_BY, 'contract_date' satisfies SortBy),
 		sort_dir: oneOf(p.get('sort_dir'), VALID_SORT_DIR, 'desc' satisfies SortDir),
+		buyer_eik: p.get('buyer_eik') ?? undefined,
+		supplier_eik: p.get('supplier_eik') ?? undefined,
 		page: p.get('page') ? Number(p.get('page')) : 1
 	};
 

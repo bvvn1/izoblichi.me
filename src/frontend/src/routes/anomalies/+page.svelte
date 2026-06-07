@@ -14,7 +14,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let filters = $state(data.filters);
+	let filters = $derived(data.filters);
 
 	const type = $derived<AnomalyType>(filters.type ?? 'near_threshold');
 	const page = $derived(filters.page ?? 1);
@@ -67,6 +67,8 @@
 		if (filters.year_from) params.set('year_from', filters.year_from.toString());
 		if (filters.year_to) params.set('year_to', filters.year_to.toString());
 		if (activePage > 1) params.set('page', activePage.toString());
+		if (filters.buyer_eik) params.set('buyer_eik', filters.buyer_eik);
+		if (filters.supplier_eik) params.set('supplier_eik', filters.supplier_eik);
 
 		goto(resolve(`/anomalies?${params}`), {
 			keepFocus: true,
@@ -99,6 +101,14 @@
 		</td>
 	</tr>
 {/snippet}
+
+<nav
+	class="flex items-center gap-2 border-b border-base-content/15 py-3 font-mono text-xs text-base-content/40"
+>
+	<a href={resolve('/')} class="hover:text-base-content">Начало</a>
+	<span>/</span>
+	<a href={resolve('/anomalies')} class="hover:text-base-content">Аномалии</a>
+</nav>
 
 <section class="border-b border-base-content/15 py-10">
 	<p class="mb-3 font-mono text-xs tracking-[.14em] text-base-content/50 uppercase">Анализ</p>
