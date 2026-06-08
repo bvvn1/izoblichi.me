@@ -138,17 +138,17 @@
 		</p>
 		<div class="space-y-2">
 			{#each profile.year_breakdown as row (row.year)}
-				<div class="flex items-center gap-4">
-					<span class="w-10 shrink-0 font-mono text-xs text-base-content/50">{row.year}</span>
-					<div class="flex flex-1 items-center gap-2">
+				<div class="flex items-center gap-2 sm:gap-4">
+					<span class="w-8 shrink-0 font-mono text-[11px] text-base-content/50 sm:w-10 sm:text-xs">{row.year}</span>
+					<div class="flex flex-1 items-center gap-1.5 sm:gap-2">
 						<div
-							class="h-5 min-w-0.5 rounded-sm bg-[#B85C38]/80 transition-all"
+							class="h-4 rounded-sm bg-[#B85C38]/80 transition-all sm:h-5"
 							style="width: {(row.contract_count / maxYearCount) * 100}%"
 						></div>
-						<span class="shrink-0 font-mono text-xs text-base-content/60">{row.contract_count}</span
+						<span class="shrink-0 font-mono text-[11px] text-base-content/60 sm:text-xs">{row.contract_count}</span
 						>
 					</div>
-					<span class="w-28 shrink-0 text-right font-mono text-xs text-base-content/40"
+					<span class="w-20 shrink-0 text-right font-mono text-[11px] text-base-content/40 sm:w-28 sm:text-xs"
 						>{formatCurrency(row.total_value, 'BGN')}</span
 					>
 				</div>

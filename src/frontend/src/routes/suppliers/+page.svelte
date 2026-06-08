@@ -25,7 +25,7 @@
 		if (q) params.set('q', q);
 		if (page > 1) params.set('page', page.toString());
 
-		goto(resolve(`/parties?${params}`), {
+		goto(resolve(`/suppliers?${params}`), {
 			keepFocus: true,
 			invalidateAll: true
 		});
@@ -82,7 +82,7 @@
 			<input
 				id="search"
 				type="text"
-				bind:value={filters.q}
+				bind:value={data.filters.q}
 				oninput={updateSearch}
 				placeholder="Търси по име или ЕИК…"
 				class="input w-full rounded-sm font-mono text-xs"

@@ -18,18 +18,22 @@
 
 	// Graph state
 	let hoveredNodeId = $state<string | null>(null);
+	let tappedNodeId = $state<string | null>(null);
 	let tooltipX = $state(0);
 	let tooltipY = $state(0);
 	let svgEl = $state<SVGSVGElement | null>(null);
 	let containerEl = $state<HTMLDivElement | null>(null);
 	let containerWidth = $state(400);
 
+	// Unified "active" node id (hover or tap)
+	const activeNodeId = $derived(hoveredNodeId ?? tappedNodeId);
+
 	// Reactive SVG size based on container
 	$effect(() => {
 		const el = containerEl;
 		if (!el) return;
 		const ro = new ResizeObserver(([entry]) => {
-			containerWidth = Math.min(entry.contentRect.width, 640);
+			containerWidth = Math.min(entry.contentRect.width, 800);
 		});
 		ro.observe(el);
 		return () => ro.disconnect();
@@ -38,6 +42,9 @@
 	const SVG_SIZE = $derived(containerWidth);
 	const CX = $derived(SVG_SIZE / 2);
 	const CY = $derived(SVG_SIZE / 2);
+
+	// Scale factor relative to 800px design size (1.0 at 800px, ~0.4 at 320px)
+	const scale = $derived(Math.max(SVG_SIZE / 600, 0.5));
 
 	// The first node is the supplier itself, the rest are buyers
 	const supplierNode = $derived(network.nodes[0]);
@@ -118,9 +125,9 @@
 					const dx = pos[j].x - pos[i].x;
 					const dy = pos[j].y - pos[i].y;
 					const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-					const ri = 8 + (buyerNodes[i].size / maxBuyerSize) * 24;
-					const rj = 8 + (buyerNodes[j].size / maxBuyerSize) * 24;
-					const minDist = (ri + rj) * 1.5 + 28;
+					const ri = nodeRadius(buyerNodes[i].size);
+					const rj = nodeRadius(buyerNodes[j].size);
+					const minDist = (ri + rj) * 1.5 + 28 * scale;
 					if (dist < minDist) {
 						const push = (minDist - dist) / 2;
 						pos[i].x -= (push * dx) / dist;
@@ -168,19 +175,24 @@
 	}
 
 	function nodeRadius(size: number): number {
-		return 8 + (size / maxBuyerSize) * 24;
+		return (8 + (size / maxBuyerSize) * 24) * scale;
 	}
 
 	function edgeThickness(label: string): number {
 		const count = parseInt(label) || 1;
-		return 1 + (count / maxEdgeContracts) * 5;
+		return ((1 + (count / maxEdgeContracts) * 5) * scale);
 	}
 
 	function truncatedLabel(name: string): string {
-		return name.length > 22 ? name.slice(0, 20) + '…' : name;
+		const maxLen = SVG_SIZE < 400 ? 14 : 22;
+		return name.length > maxLen ? name.slice(0, maxLen - 2) + '…' : name;
 	}
 
 	function handleNodeHover(e: MouseEvent, nodeId: string) {
+		// Mouse hover (desktop) — always update
+		if (e.type === 'mouseenter') {
+			tappedNodeId = null;
+		}
 		hoveredNodeId = nodeId;
 		const coords = svgCoords(e);
 		tooltipX = coords.x;
@@ -189,6 +201,23 @@
 
 	function handleNodeLeave() {
 		hoveredNodeId = null;
+	}
+
+	function handleNodeTap(e: MouseEvent, nodeId: string) {
+		// Touch toggle: first tap shows tooltip, second tap navigates
+		if (tappedNodeId === nodeId) {
+			// Second tap on same node — navigate
+			tappedNodeId = null;
+			hoveredNodeId = null;
+			goto(resolve(`/buyers/${nodeId}`));
+		} else {
+			// First tap — show tooltip
+			hoveredNodeId = null;
+			tappedNodeId = nodeId;
+			const coords = svgCoords(e);
+			tooltipX = coords.x;
+			tooltipY = coords.y;
+		}
 	}
 
 	function handleBuyerClick(eik: string) {
@@ -293,7 +322,7 @@
 		<p class="mb-6 font-mono text-[10px] tracking-[.22em] text-base-content/40 uppercase">
 			Връзки с купувачи
 		</p>
-		<div class="relative mx-auto max-w-[640px]" bind:this={containerEl}>
+		<div class="relative mx-auto max-w-[800px]" bind:this={containerEl}>
 			<svg
 				viewBox="0 0 {SVG_SIZE} {SVG_SIZE}"
 				class="h-auto w-full"
@@ -305,16 +334,16 @@
 				{#each buyerNodes as buyer, i (buyer.id)}
 					{@const pos = displayPositions[i]}
 					{@const edge = edgeMap.get(buyer.id)}
-					{@const isHovered = hoveredNodeId === buyer.id}
+					{@const isActive = activeNodeId === buyer.id}
 					<line
 						x1={pos.x}
 						y1={pos.y}
 						x2={CX}
 						y2={CY}
-						stroke={isHovered ? '#B85C38' : '#d4d4d4'}
-						stroke-width={isHovered ? edgeThickness(edge?.label ?? '1') + 1 : edgeThickness(edge?.label ?? '1')}
+						stroke={isActive ? '#B85C38' : '#d4d4d4'}
+						stroke-width={isActive ? edgeThickness(edge?.label ?? '1') + 1 : edgeThickness(edge?.label ?? '1')}
 						stroke-linecap="round"
-						opacity={hoveredNodeId ? (isHovered ? 1 : 0.15) : 0.7}
+						opacity={activeNodeId ? (isActive ? 1 : 0.15) : 0.7}
 						class="transition-all duration-200"
 					/>
 				{/each}
@@ -323,7 +352,7 @@
 				{#each buyerNodes as buyer, i (buyer.id)}
 					{@const pos = displayPositions[i]}
 					{@const r = nodeRadius(buyer.size)}
-					{@const isHovered = hoveredNodeId === buyer.id}
+					{@const isActive = activeNodeId === buyer.id}
 					<!-- Invisible larger hit area -->
 					<circle
 						cx={pos.x}
@@ -333,31 +362,32 @@
 						class="cursor-pointer"
 						onmouseenter={(e) => handleNodeHover(e, buyer.id)}
 						onmouseleave={handleNodeLeave}
-						onclick={() => handleBuyerClick(buyer.id)}
+						onclick={(e) => handleNodeTap(e, buyer.id)}
 					/>
 					<!-- Visible node -->
 					<circle
 						cx={pos.x}
 						cy={pos.y}
 						r={r}
-						fill={isHovered ? '#B85C38' : '#78716c'}
-						stroke={isHovered ? '#B85C38' : '#57534e'}
+						fill={isActive ? '#B85C38' : '#78716c'}
+						stroke={isActive ? '#B85C38' : '#57534e'}
 						stroke-width="1.5"
-						opacity={hoveredNodeId ? (isHovered ? 1 : 0.35) : 1}
+						opacity={activeNodeId ? (isActive ? 1 : 0.35) : 1}
 						class="cursor-pointer transition-all duration-200"
 						onmouseenter={(e) => handleNodeHover(e, buyer.id)}
 						onmouseleave={handleNodeLeave}
-						onclick={() => handleBuyerClick(buyer.id)}
+						onclick={(e) => handleNodeTap(e, buyer.id)}
 					/>
 					<!-- Label -->
 					<text
 						x={pos.x}
-						y={pos.y + r + 14}
+						y={pos.y + r + 12 * scale}
 						text-anchor="middle"
-						class="cursor-pointer fill-base-content/60 font-mono text-[10px] transition-colors"
+						class="cursor-pointer fill-base-content/60 font-mono transition-colors"
+						style="font-size: {Math.round(9 * scale)}px"
 						onmouseenter={(e) => handleNodeHover(e, buyer.id)}
 						onmouseleave={handleNodeLeave}
-						onclick={() => handleBuyerClick(buyer.id)}
+						onclick={(e) => handleNodeTap(e, buyer.id)}
 					>
 						{truncatedLabel(buyer.label)}
 					</text>
@@ -367,56 +397,58 @@
 				<circle
 					cx={CX}
 					cy={CY}
-					r={28}
+					r={28 * scale}
 					fill="#B85C38"
 					stroke="#9a4a2e"
-					stroke-width="2"
+					stroke-width={2 * scale}
 				/>
 				<text
 					x={CX}
 					y={CY}
 					text-anchor="middle"
 					dominant-baseline="central"
-					class="fill-white font-display text-sm font-black"
+					class="fill-white font-display font-black"
+					style="font-size: {Math.round(12 * scale)}px"
 				>
 										Доставчик
 				</text>
 				<text
 					x={CX}
-					y={CY + 42}
+					y={CY + 38 * scale}
 					text-anchor="middle"
-					class="fill-base-content/70 font-mono text-[10px]"
+					class="fill-base-content/70 font-mono"
+					style="font-size: {Math.round(9 * scale)}px"
 				>
 					{format(profile.total_wins)} договора
 				</text>
 
 				<!-- Tooltip -->
-				{#if hoveredNodeId}
-					{@const hovered = buyerNodes.find((n) => n.id === hoveredNodeId)}
-					{@const edge = edgeMap.get(hoveredNodeId)}
+				{#if activeNodeId}
+					{@const hovered = buyerNodes.find((n) => n.id === activeNodeId)}
+					{@const edge = edgeMap.get(activeNodeId)}
 					{#if hovered}
-						{@const tooltipW = 200}
-						{@const tooltipH = 60}
+						{@const tooltipW = 180 * scale}
+						{@const tooltipH = 52 * scale}
 						{@const tx = Math.min(Math.max(tooltipX, tooltipW / 2 + 4), SVG_SIZE - tooltipW / 2 - 4)}
 						{@const ty = tooltipY - tooltipH - 16 > 0 ? tooltipY - tooltipH - 8 : tooltipY + 20}
 						<g transform="translate({tx - tooltipW / 2}, {ty})">
 							<rect
 								width={tooltipW}
 								height={tooltipH}
-								rx="4"
+								rx={3 * scale}
 								fill="#1c1917"
 								stroke="#44403c"
 								stroke-width="1"
 								opacity="0.95"
 							/>
-							<text x={8} y={18} class="fill-white font-mono text-[11px] font-medium">
+							<text x={7 * scale} y={16 * scale} class="fill-white font-mono font-medium" style="font-size: {Math.round(10 * scale)}px">
 								{truncatedLabel(hovered.label)}
 							</text>
-							<text x={8} y={34} class="fill-base-content/50 font-mono text-[10px]">
+							<text x={7 * scale} y={30 * scale} class="fill-base-content/50 font-mono" style="font-size: {Math.round(9 * scale)}px">
 								{edge?.label ?? '—'} · {formatCurrency(hovered.size, 'BGN')}
 							</text>
-							<text x={8} y={48} class="fill-base-content/40 font-mono text-[9px]">
-								Кликни за профил на купувач
+							<text x={7 * scale} y={42 * scale} class="fill-base-content/40 font-mono" style="font-size: {Math.round(8 * scale)}px">
+								{tappedNodeId === activeNodeId ? 'Кликни отново за профил' : 'Кликни за профил на купувач'}
 							</text>
 						</g>
 					{/if}
@@ -424,7 +456,7 @@
 			</svg>
 
 			<!-- Legend -->
-			<div class="mt-4 flex flex-wrap justify-center gap-6 font-mono text-[10px] text-base-content/40">
+			<div class="mt-4 flex flex-wrap justify-center gap-3 gap-y-1.5 font-mono text-base-content/40 sm:gap-6" style="font-size: 9px">
 				<span class="flex items-center gap-1.5">
 					<span class="inline-block h-2 w-2 rounded-full bg-[#B85C38]"></span>
 					Големина = обща стойност
@@ -447,17 +479,17 @@
 		</p>
 		<div class="space-y-2">
 			{#each profile.year_breakdown as row (row.year)}
-				<div class="flex items-center gap-4">
-					<span class="w-10 shrink-0 font-mono text-xs text-base-content/50">{row.year}</span>
-					<div class="flex flex-1 items-center gap-2">
+				<div class="flex items-center gap-2 sm:gap-4">
+					<span class="w-8 shrink-0 font-mono text-[11px] text-base-content/50 sm:w-10 sm:text-xs">{row.year}</span>
+					<div class="flex flex-1 items-center gap-1.5 sm:gap-2">
 						<div
-							class="h-5 min-w-0.5 rounded-sm bg-[#B85C38]/80 transition-all"
+							class="h-4 rounded-sm bg-[#B85C38]/80 transition-all sm:h-5"
 							style="width: {(row.contract_count / maxYearCount) * 100}%"
 						></div>
-						<span class="shrink-0 font-mono text-xs text-base-content/60">{row.contract_count}</span
+						<span class="shrink-0 font-mono text-[11px] text-base-content/60 sm:text-xs">{row.contract_count}</span
 						>
 					</div>
-					<span class="w-28 shrink-0 text-right font-mono text-xs text-base-content/40"
+					<span class="w-20 shrink-0 text-right font-mono text-[11px] text-base-content/40 sm:w-28 sm:text-xs"
 						>{formatCurrency(row.total_value, 'BGN')}</span
 					>
 				</div>
